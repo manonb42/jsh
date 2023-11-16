@@ -1,3 +1,3 @@
-LAÏDOUNI Mohamed 22110580 "Mohamed LAÏDOUNI" @laidouni
-BAHA Manon -------- "BAHA manon" @baham
-CRAGUE Ilian -------- "CRAGUE ilian" @crague
+LAÏDOUNI Mohamed 22110580 @laidouni
+BAHA Manon -------- @baham
+CRAGUE Ilian -------- @crague
