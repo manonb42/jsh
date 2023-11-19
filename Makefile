@@ -4,15 +4,13 @@ DEPS = jsh.h
 O =  jsh.o
 EXEC = jsh
 
-all : $(EXEC)
+build : $(O)
+	gcc -Wall -o jsh jsh.c -lreadline
 
 %.o: %.c $(DEPS)
-	$(CC) $(CFLAGS) -c $< 
+	$(CC) $(CFLAGS) -c $<
 
-app : $(O)
-	$(CC) $(CFLAGS) -o $@ $^
-
-run :
+run : build
 	./$(EXEC)
 	
 clean :
