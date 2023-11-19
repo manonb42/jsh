@@ -24,10 +24,31 @@ char **split_string(char *chemin, char* separateur){
 }
 
 
-int main () {
-    char *read;
-    char **split;
+typedef struct command_t {
+    char **argv;
+    int argc;
+} command_t;
 
+
+void free_command(command_t *command){
+    for (int i=0; i<command->argc; ++i) free(command->argv[i]);
+    free(command->argv);
+}
+
+command_t *read_command(){
+    char *read = readline(">");
+    if (read == NULL) return NULL;
+    add_history(read);
+    char **argv = split_string(read," ");
+    int argc;
+    for (argc=0; argv[argc] != NULL; ++argc);
+
+    command_t *out = malloc(sizeof(command_t));
+    *out = (command_t){ .argc = argc, .argv = argv};
+    return out;
+}
+
+int main(){
     int status;
     int return_code = 0;
 
@@ -35,32 +56,30 @@ int main () {
 
     rl_initialize();
     rl_outstream = stderr;
+
     while(1) {
-        read = readline(">");
-        add_history(read);
-        split = split_string(read," ");
+        command_t *command = read_command();
 
 
-        if (strcmp (read,"?") == 0){
+        if (strcmp (command->argv[0],"?") == 0){
             printf("%d\n", return_code);
         }
-        else if (strcmp (read,"pwd") == 0){
+        else if (strcmp (command->argv[0],"pwd") == 0){
             if(getcwd(buf, sizeof(buf)) != NULL) {
                 printf("%s\n", buf);
             }
             printf("pwd Failure\n");
         }
-        if (fork() == 0) {
-            execvp(split[0], split);
+        else if (fork() == 0) {
+            execvp(command->argv[0], command->argv);
         } else {
             waitpid(0, &status, 0);
             return_code = WEXITSTATUS(status);
         }
+
+        free_command(command);
     }
 
-    free(buf);
-    free(read);
-    free(split);
     return 0;
 }
 
