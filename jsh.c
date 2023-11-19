@@ -19,53 +19,49 @@ char **split_string(char *chemin, char* separateur){
         i++;
     }
     free(chem);
-	composantes[size + 1] = NULL;
+    composantes[size + 1] = NULL;
     return composantes;
 }
 
 
 int main () {
-	char * read;
-	char ** split;
+    char *read;
+    char **split;
 
-	int status;
-	int return_code = 0;
+    int status;
+    int return_code = 0;
 
-	char buf[1024];
+    char buf[1024];
 
-	rl_initialize();
-	rl_outstream = stderr;
-	while(1) {
-		read = readline(">");
-		add_history(read);
-		split = split_string(read," ");
+    rl_initialize();
+    rl_outstream = stderr;
+    while(1) {
+        read = readline(">");
+        add_history(read);
+        split = split_string(read," ");
 
-		if (fork() == 0) {
-			execvp(split[0], split);
-			if(strcmp (read,"?") == 0) {
-				printf("%d\n", return_code);
-				exit(0);
-			}
-			if(strcmp (read,"pwd") == 0) {
-				if(getcwd(buf, sizeof(buf)) != NULL) {
-					printf("%s\n", buf);
-					exit(0);
-				}
-				printf("pwd Failure\n");
-				exit(1);
-			}
-			printf("Je ne connais pas \"%s\" pour l'instant :(\n",read);
-			exit(1);
-		}
-		else {
-			waitpid(0, &status, 0);
-			return_code = WEXITSTATUS(status);
-		}
-	}
-	free(buf);
-	free(read);
-	free(split);
-	return 0;
+
+        if (strcmp (read,"?") == 0){
+            printf("%d\n", return_code);
+        }
+        else if (strcmp (read,"pwd") == 0){
+            if(getcwd(buf, sizeof(buf)) != NULL) {
+                printf("%s\n", buf);
+            }
+            printf("pwd Failure\n");
+        }
+        if (fork() == 0) {
+            execvp(split[0], split);
+        } else {
+            waitpid(0, &status, 0);
+            return_code = WEXITSTATUS(status);
+        }
+    }
+
+    free(buf);
+    free(read);
+    free(split);
+    return 0;
 }
 
 
