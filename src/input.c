@@ -24,7 +24,7 @@ char **split_string(char *chemin, char* separateur){
 
 command_t *read_command(){
     char *read = readline(">");
-    if (read == NULL) return NULL;
+    if (read == NULL) read = "exit";
     add_history(read);
     char **argv = split_string(read," ");
     int argc;
