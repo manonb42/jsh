@@ -29,6 +29,11 @@ typedef struct command_t {
     int argc;
 } command_t;
 
+typedef struct jsh_t {
+    int last_exit_code;
+} jsh_t;
+
+jsh_t jsh = { 0 };
 
 void free_command(command_t *command){
     for (int i=0; i<command->argc; ++i) free(command->argv[i]);
@@ -48,35 +53,36 @@ command_t *read_command(){
     return out;
 }
 
-int main(){
-    int status;
-    int return_code = 0;
+void exec_command(command_t *command){
 
-    char buf[1024];
+    if (strcmp (command->argv[0],"?") == 0){
+        printf("%d\n", jsh.last_exit_code);
+    }
+    else if (strcmp (command->argv[0],"pwd") == 0){
+        char buf[1024];
+        if(getcwd(buf, sizeof(buf)) != NULL) {
+            printf("%s\n", buf);
+        }
+        printf("pwd Failure\n");
+    }
+    else if (fork() == 0) {
+        execvp(command->argv[0], command->argv);
+    } else {
+        int status;
+        waitpid(0, &status, 0);
+        jsh.last_exit_code = WEXITSTATUS(status);
+    }
+
+}
+
+int main(){
 
     rl_initialize();
     rl_outstream = stderr;
 
     while(1) {
         command_t *command = read_command();
-
-
-        if (strcmp (command->argv[0],"?") == 0){
-            printf("%d\n", return_code);
-        }
-        else if (strcmp (command->argv[0],"pwd") == 0){
-            if(getcwd(buf, sizeof(buf)) != NULL) {
-                printf("%s\n", buf);
-            }
-            printf("pwd Failure\n");
-        }
-        else if (fork() == 0) {
-            execvp(command->argv[0], command->argv);
-        } else {
-            waitpid(0, &status, 0);
-            return_code = WEXITSTATUS(status);
-        }
-
+        exec_command(command);
         free_command(command);
     }
 
