@@ -3,8 +3,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <math.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+
+// Global Variables - Colors
+char *vert = "\001\033[32m\002";
+char *cyan = "\001\033[36m\002";
+char *jaune = "\001\033[33m\002";
+char *bleu = "\001\033[34m\002";
+char *rouge = "\001\033[91m\002";
+char *normal = "\001\033[00m\002";
 
 char **split_string(char *chemin, char *separateur)
 {
@@ -25,25 +34,38 @@ char **split_string(char *chemin, char *separateur)
     return composantes;
 }
 
+int nbchiffres(int nb)
+{
+    int i = 1;
+    while (nb != 0)
+    {
+        nb /= 10;
+        ++i;
+    }
+    return i;
+}
+
 command_t *read_command()
 {
-
-    char *vert = "\001\033[32m\002";
-    char *cyan = "\001\033[36m\002";
-    // char *jaune = "\001\033[33m\002";
-    // char *bleu = "\001\033[34m\002";
-    // char *rouge = "\001\033[91m\002";
-    char *normal = "\001\033[00m\002";
-
-    char prompt[30];
-    char curdir[1024];
+    // Previous calculations
+    char pwd[1024];
+    getcwd(pwd, sizeof(pwd));
+    char curdir[strlen(pwd) + 1];
     getcwd(curdir, sizeof(curdir));
-    unsigned int lenprompt = 4 + 1; // 4 for "[]$ " & 1 for nbjobs
-    if (strlen(curdir) + lenprompt > 30)
-        sprintf(prompt, "%s[%d]%s...%s%s$ ", cyan, 0, vert, (curdir + (strlen(curdir) - 30 + lenprompt + 3)), normal);
-    else
-        sprintf(prompt, "%s[%d]%s%s%s$ ", cyan, 0, vert, curdir, normal);
+    unsigned int nbjobs = 0;
+    unsigned int nbcj = nbchiffres(nbjobs);
 
+    // Formatted prompt
+    char prompt[30];
+    unsigned int lenprompt = 4 + nbcj; // 4 for "[]$ " & nbcj for nbjobs
+    if (strlen(curdir) + lenprompt > 30)
+    {
+        sprintf(prompt, "%s[%d]%s...%s%s$ ", cyan, nbjobs, vert, (curdir + (strlen(curdir) - 30 + lenprompt + 3)), normal);
+    }
+    else
+        sprintf(prompt, "%s[%d]%s%s%s$ ", cyan, nbjobs, vert, curdir, normal);
+
+    // Reading...
     char *read = readline(prompt);
     if (read == NULL)
         read = "exit";

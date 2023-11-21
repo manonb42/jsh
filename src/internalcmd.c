@@ -55,10 +55,8 @@ int cd(char *path)
         perror("jsh: cd");
         return 1;
     }
-    // Case : var "OLDPWD" not define
-    if (getenv("OLDPWD") == NULL)
-        setenv("OLDPWD", curdir, 0);
-
+    // Change previous directory
+    setenv("OLDPWD", curdir, 1);
     return 0;
 }
 

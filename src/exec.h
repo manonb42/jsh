@@ -3,6 +3,6 @@
 
 #include "jsh.h"
 
-void exec_command(command_t *command);
+void exec_command(command_t *);
 
 #endif // EXEC_H_
