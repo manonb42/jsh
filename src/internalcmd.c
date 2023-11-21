@@ -45,6 +45,7 @@ int cd(char *path)
             fprintf(stderr, "jsh: cd: \"OLDPWD\" is not define (no previous directory)\n");
             return 1;
         }
+        fprintf(stderr, "%s\n", getenv("OLDPWD"));
         strcpy(newpath, getenv("OLDPWD"));
     }
     else

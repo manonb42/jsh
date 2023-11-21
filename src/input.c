@@ -52,7 +52,7 @@ command_t *read_command()
     getcwd(pwd, sizeof(pwd));
     char curdir[strlen(pwd) + 1];
     getcwd(curdir, sizeof(curdir));
-    unsigned int nbjobs = 0;
+    long int nbjobs = 0;
     unsigned int nbcj = nbchiffres(nbjobs);
 
     // Formatted prompt
@@ -60,10 +60,10 @@ command_t *read_command()
     unsigned int lenprompt = 4 + nbcj; // 4 for "[]$ " & nbcj for nbjobs
     if (strlen(curdir) + lenprompt > 30)
     {
-        sprintf(prompt, "%s[%d]%s...%s%s$ ", cyan, nbjobs, vert, (curdir + (strlen(curdir) - 30 + lenprompt + 3)), normal);
+        sprintf(prompt, "%s[%ld]%s...%s%s$ ", cyan, nbjobs, vert, (curdir + (strlen(curdir) - 30 + lenprompt + 3)), normal);
     }
     else
-        sprintf(prompt, "%s[%d]%s%s%s$ ", cyan, nbjobs, vert, curdir, normal);
+        sprintf(prompt, "%s[%ld]%s%s%s$ ", cyan, nbjobs, vert, curdir, normal);
 
     // Reading...
     char *read = readline(prompt);
