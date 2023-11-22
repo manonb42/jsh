@@ -17,13 +17,15 @@ void exec_command(command_t *command)
         printf("%d\n", jsh.last_exit_code);
     }
     else if (strcmp(cmd, "pwd") == 0)
-        pwd();
+        jsh.last_exit_code = pwd();
     else if (strcmp(cmd, "cd") == 0)
-        cd(command->argv[1]);
+        jsh.last_exit_code = cd(command->argv[1]);
     else if (strcmp(cmd, "exit") == 0)
-        quit(jsh.last_exit_code, command);
-    else if (fork() == 0)
+        jsh.last_exit_code = quit(jsh.last_exit_code, command);
+    else if (fork() == 0) {
         execvp(cmd, command->argv);
+		exit(1);
+	}
     else
     {
         int status;
