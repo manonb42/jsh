@@ -22,9 +22,6 @@ build_dir:
 build/%.o: src/%.c $(HEADERS)
 	$(CC) -c $(CFLAGS) $< -o $@
 
-run : build
-	./$(EXEC)
-
 clean :
 	rm -rf build $(EXEC)
 
