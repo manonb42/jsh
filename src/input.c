@@ -78,7 +78,7 @@ command_t *read_command()
         *out = (command_t){.argc = 1, .argv = argv};
         return out;
     }
-    if (strlen(read) == 0)
+    if (strcmp(read, "") == 0)
     {
         return read_command();
     }
