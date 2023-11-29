@@ -23,7 +23,10 @@ void exec_command(command_t *command)
     else if (fork() == 0)
     {
         execvp(cmd, command->argv);
-        exit(1);
+        perror("jsh");
+        free_command(command);
+        jsh.last_exit_code = 127;
+        exit(jsh.last_exit_code);
     }
     else
     {
