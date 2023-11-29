@@ -45,7 +45,6 @@ int cd(char *path)
             fprintf(stderr, "jsh: cd: \"OLDPWD\" is not define (no previous directory)\n");
             return 1;
         }
-        fprintf(stderr, "%s\n", getenv("OLDPWD"));
         strcpy(newpath, getenv("OLDPWD"));
     }
     else
@@ -74,5 +73,15 @@ int quit(int code, command_t *command)
         }
     }
     exit(code);
+    return 0;
+}
+
+int showLastReturnCode()
+{
+    if (printf("%d\n", jsh.last_exit_code) < 0)
+    {
+        perror("jsh: ?");
+        return 1;
+    }
     return 0;
 }

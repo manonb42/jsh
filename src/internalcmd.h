@@ -6,4 +6,5 @@
 int pwd();
 int cd(char *);
 int quit(int, command_t *);
+int showLastReturnCode();
 #endif
