@@ -46,14 +46,14 @@ int nbchiffres(int nb)
     return i;
 }
 
-command_t *read_command()
+command_t *read_command(int nb_j)
 {
     // Previous calculations
     char pwd[1024];
     getcwd(pwd, sizeof(pwd));
     char curdir[strlen(pwd) + 1];
     getcwd(curdir, sizeof(curdir));
-    long int nbjobs = 0;
+    long int nbjobs = nb_j;
     unsigned int nbcj = nbchiffres(nbjobs);
 
     // Formatted prompt
@@ -80,14 +80,18 @@ command_t *read_command()
     }
     if (strcmp(read, "") == 0)
     {
-        return read_command();
+        return read_command(nbjobs);
     }
     add_history(read);
     char **argv = split_string(read, " ");
     int argc;
-    for (argc = 0; argv[argc] != NULL; ++argc)
-        ;
-
-    *out = (command_t){.argc = argc, .argv = argv};
+	bool bg = false;
+    for (argc = 0; argv[argc] != NULL; ++argc) {
+        if(strcmp(argv[argc],"&") == 0 && argv[argc + 1] == NULL) {
+			argv[argc] = NULL;
+			bg = true;
+		}
+	}
+    *out = (command_t){.argc = argc , .argv = argv, .bg = bg, .nb_jobs = nbjobs};
     return out;
 }
