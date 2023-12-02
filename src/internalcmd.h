@@ -2,9 +2,10 @@
 #define INTERNALCMD_H_
 
 #include "jsh.h"
+#include "stdbool.h"
 
-int pwd();
-int cd(char *);
-int quit(int, command_t *);
-int showLastReturnCode();
+
+bool is_internal(char *name);
+int exec_internal(command_t *command);
+
 #endif

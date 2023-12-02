@@ -4,7 +4,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-int pwd()
+
+char *internals[] = { "pwd", "cd", "exit", "?"};
+
+int exec_pwd()
 {
     char curdir[1024];
     if (getcwd(curdir, sizeof(curdir)) != NULL)
@@ -19,7 +22,7 @@ int pwd()
     }
 }
 
-int cd(char *path)
+int exec_cd(char *path)
 {
     char curdir[1024]; // pwd of current directory
     getcwd(curdir, sizeof(curdir));
@@ -60,7 +63,7 @@ int cd(char *path)
     return 0;
 }
 
-int quit(int code, command_t *command)
+int exec_exit(int code, command_t *command)
 {
     if (command->argc == 2)
     {
@@ -76,7 +79,7 @@ int quit(int code, command_t *command)
     return 0;
 }
 
-int showLastReturnCode()
+int exec_show_last_return_code()
 {
     if (printf("%d\n", jsh.last_exit_code) < 0)
     {
@@ -84,4 +87,19 @@ int showLastReturnCode()
         return 1;
     }
     return 0;
+}
+
+bool is_internal(char *name){
+    for (unsigned long i=0; i < sizeof(internals) / sizeof(char*); ++i)
+        if (strcmp(name, internals[i]) == 0) return true;
+    return false;
+}
+
+int exec_internal(command_t *command){
+    char *cmd = command->argv[0];
+    if (strcmp(cmd, "?") == 0) return exec_show_last_return_code();
+    else if (strcmp(cmd, "pwd") == 0) return exec_pwd();
+    else if (strcmp(cmd, "cd") == 0) return exec_cd(command->argv[1]);
+    else if (strcmp(cmd, "exit") == 0) return exec_exit(jsh.last_exit_code, command);
+    return -1;
 }
