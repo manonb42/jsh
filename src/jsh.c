@@ -26,6 +26,8 @@ int main()
     while (1)
     {
         command_t *command = read_command();
+        if (command == NULL) continue;
+
         exec_command(command);
         free_command(command);
     }

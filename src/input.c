@@ -30,7 +30,6 @@ char **split_string(char *chemin, char *separateur)
         i++;
     }
     free(chem);
-    free(chemin);
     composantes[size + 1] = NULL;
     return composantes;
 }
@@ -66,21 +65,21 @@ command_t *read_command()
     else
         sprintf(prompt, "%s[%ld]%s%s%s$ ", cyan, nbjobs, vert, curdir, normal);
 
-    // Reading...
     command_t *out = malloc(sizeof(command_t));
 
     char *read = readline(prompt);
     if (read == NULL)
     {
         char **argv = malloc(2*sizeof(char*));
-        argv[0] = "exit";
+        argv[0] = strdup("exit");
         argv[1] = NULL;
         *out = (command_t){.argc = 1, .argv = argv};
         return out;
     }
     if (strcmp(read, "") == 0)
     {
-        return read_command();
+        free(read);
+        return NULL;
     }
     add_history(read);
     char **argv = split_string(read, " ");
@@ -89,5 +88,6 @@ command_t *read_command()
         ;
 
     *out = (command_t){.argc = argc, .argv = argv};
+    free(read);
     return out;
 }
