@@ -45,6 +45,19 @@ int nbchiffres(int nb)
     return i;
 }
 
+
+command_t *parse_command(char *read){
+    command_t *out = malloc(sizeof(command_t));
+    char **argv = split_string(read, " ");
+    int argc;
+    for (argc = 0; argv[argc] != NULL; ++argc)
+        ;
+
+    // check if the command should be launched in background
+    *out = (command_t){.argc = argc, .argv = argv};
+    return out;
+}
+
 command_t *read_command()
 {
     // Previous calculations
@@ -59,35 +72,22 @@ command_t *read_command()
     char prompt[30];
     unsigned int lenprompt = 4 + nbcj; // 4 for "[]$ " & nbcj for nbjobs
     if (strlen(curdir) + lenprompt > 30)
-    {
         sprintf(prompt, "%s[%ld]%s...%s%s$ ", cyan, nbjobs, vert, (curdir + (strlen(curdir) - 30 + lenprompt + 3)), normal);
-    }
     else
         sprintf(prompt, "%s[%ld]%s%s%s$ ", cyan, nbjobs, vert, curdir, normal);
 
-    command_t *out = malloc(sizeof(command_t));
-
     char *read = readline(prompt);
-    if (read == NULL)
-    {
-        char **argv = malloc(2*sizeof(char*));
-        argv[0] = strdup("exit");
-        argv[1] = NULL;
-        *out = (command_t){.argc = 1, .argv = argv};
-        return out;
-    }
-    if (strcmp(read, "") == 0)
-    {
+
+    if (read == NULL) return parse_command("exit");
+
+    if (read[0] == '\0') {
         free(read);
         return NULL;
     }
-    add_history(read);
-    char **argv = split_string(read, " ");
-    int argc;
-    for (argc = 0; argv[argc] != NULL; ++argc)
-        ;
 
-    *out = (command_t){.argc = argc, .argv = argv};
+    add_history(read);
+
+    command_t *out = parse_command(read);
     free(read);
     return out;
 }
