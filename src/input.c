@@ -54,7 +54,24 @@ command_t *parse_command(char *read){
         ;
 
     // check if the command should be launched in background
-    *out = (command_t){.argc = argc, .argv = argv};
+    // and look for syntax errors
+    bool background = false;
+    for (int i=0; i+1<argc; ++i){
+        if (strcmp(argv[i], "&") == 0){
+            printf("jsh: syntax error\n");
+            return NULL;
+        }
+    }
+
+    if (strcmp(argv[argc-1], "&") == 0){
+        background = true;
+        // remove the argument
+        free(argv[argc-1]);
+        argv[argc-1] = NULL;
+        argc--;
+    }
+
+    *out = (command_t){ .argc = argc, .argv = argv, .background = background};
     return out;
 }
 

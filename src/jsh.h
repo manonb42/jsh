@@ -1,11 +1,15 @@
 #ifndef JSH_H_
 #define JSH_H_
 
-typedef struct command_t
-{
+#include "stdbool.h"
+
+
+typedef struct command_t {
     char **argv;
     int argc;
+    bool background;
 } command_t;
+
 
 typedef struct jsh_t
 {
