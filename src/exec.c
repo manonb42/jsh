@@ -10,53 +10,52 @@
 void exec_command(command_t *command)
 {
 
-
-    char *cmd = command->argv[0];
+	char *cmd = command->argv[0];
 
 	command->nb_jobs++;
 
-
-	if(is_internal(cmd)) {
+	if (is_internal(cmd))
+	{
 		command->bg = false;
 		jsh.last_exit_code = exec_internal(command);
 	}
-	else{
+	else
+	{
 		exec_external(command);
 	}
 }
 
-void exec_external(command_t *command) {	
+void exec_external(command_t *command)
+{
 	int pid_bg = 0;
 	int pid;
-	//int status_bg;
+	// int status_bg;
 
-    char *cmd = command->argv[0];
-	
-	if(command->bg) {
+	char *cmd = command->argv[0];
+
+	if (command->bg)
+	{
 		command->nb_jobs++;
-		if((pid_bg = fork()) != 0) {
+		if ((pid_bg = fork()) != 0)
+		{
 			command->bg = false;
 		}
 	}
+	printf("pid: %d\n", jsh.pid_to_stop);
 	jsh.pid_to_stop = pid_bg;
 
-	if (waitpid(jsh.pid_to_stop, NULL, WNOHANG) > 0 ){
-				puts("yoyoyo");
-				command->nb_jobs--;
-			}
-    if (pid_bg == 0 && (pid = fork()) == 0)
-    {
-        execvp(cmd, command->argv);
-        perror("jsh");
-        free_command(command);
-        jsh.last_exit_code = 127;
-        exit(jsh.last_exit_code);
-    }
-    else
-    {
-        int status;
+	if (pid_bg == 0 && (pid = fork()) == 0)
+	{
+		execvp(cmd, command->argv);
+		perror("jsh");
+		free_command(command);
+		jsh.last_exit_code = 127;
+		exit(jsh.last_exit_code);
+	}
+	else
+	{
+		int status;
 		waitpid(pid, &status, 0);
-        jsh.last_exit_code = WEXITSTATUS(status);
-    }
-	
+		jsh.last_exit_code = WEXITSTATUS(status);
+	}
 }

@@ -72,7 +72,7 @@ command_t *read_command(int nb_j)
     char *read = readline(prompt);
     if (read == NULL)
     {
-        char **argv = malloc(2*sizeof(char*));
+        char **argv = malloc(2 * sizeof(char *));
         argv[0] = "exit";
         argv[1] = NULL;
         *out = (command_t){.argc = 1, .argv = argv};
@@ -85,13 +85,15 @@ command_t *read_command(int nb_j)
     add_history(read);
     char **argv = split_string(read, " ");
     int argc;
-	bool bg = false;
-    for (argc = 0; argv[argc] != NULL; ++argc) {
-        if(strcmp(argv[argc],"&") == 0 && argv[argc + 1] == NULL) {
-			argv[argc] = NULL;
-			bg = true;
-		}
-	}
-    *out = (command_t){.argc = argc , .argv = argv, .bg = bg, .nb_jobs = nbjobs};
+    bool bg = false;
+    for (argc = 0; argv[argc] != NULL; ++argc)
+    {
+        if (strcmp(argv[argc], "&") == 0 && argv[argc + 1] == NULL)
+        {
+            argv[argc] = NULL;
+            bg = true;
+        }
+    }
+    *out = (command_t){.argc = argc, .argv = argv, .bg = bg, .nb_jobs = nbjobs};
     return out;
 }
