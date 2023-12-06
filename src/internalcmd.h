@@ -4,8 +4,12 @@
 #include "jsh.h"
 #include "stdbool.h"
 
-
-bool is_internal(char *name);
-int exec_internal(command_t *command);
+int exec_pwd();
+int exec_cd(char *);
+int exec_exit(int, command_t *);
+int exec_show_last_return_code();
+bool is_internal(char *);
+int exec_internal(command_t *);
+void exec_external(command_t *command);
 
 #endif

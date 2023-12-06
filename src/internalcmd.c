@@ -4,8 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-
-char *internals[] = { "pwd", "cd", "exit", "?"};
+char *internals[] = {"pwd", "cd", "exit", "?"};
 
 int exec_pwd()
 {
@@ -89,17 +88,24 @@ int exec_show_last_return_code()
     return 0;
 }
 
-bool is_internal(char *name){
-    for (unsigned long i=0; i < sizeof(internals) / sizeof(char*); ++i)
-        if (strcmp(name, internals[i]) == 0) return true;
+bool is_internal(char *name)
+{
+    for (unsigned long i = 0; i < sizeof(internals) / sizeof(char *); ++i)
+        if (strcmp(name, internals[i]) == 0)
+            return true;
     return false;
 }
 
-int exec_internal(command_t *command){
+int exec_internal(command_t *command)
+{
     char *cmd = command->argv[0];
-    if (strcmp(cmd, "?") == 0) return exec_show_last_return_code();
-    else if (strcmp(cmd, "pwd") == 0) return exec_pwd();
-    else if (strcmp(cmd, "cd") == 0) return exec_cd(command->argv[1]);
-    else if (strcmp(cmd, "exit") == 0) return exec_exit(jsh.last_exit_code, command);
+    if (strcmp(cmd, "?") == 0)
+        return exec_show_last_return_code();
+    else if (strcmp(cmd, "pwd") == 0)
+        return exec_pwd();
+    else if (strcmp(cmd, "cd") == 0)
+        return exec_cd(command->argv[1]);
+    else if (strcmp(cmd, "exit") == 0)
+        return exec_exit(jsh.last_exit_code, command);
     return -1;
 }

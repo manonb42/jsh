@@ -45,44 +45,14 @@ int nbchiffres(int nb)
     return i;
 }
 
-
-command_t *parse_command(char *read){
-    command_t *out = malloc(sizeof(command_t));
-    char **argv = split_string(read, " ");
-    int argc;
-    for (argc = 0; argv[argc] != NULL; ++argc)
-        ;
-
-    // check if the command should be launched in background
-    // and look for syntax errors
-    bool background = false;
-    for (int i=0; i+1<argc; ++i){
-        if (strcmp(argv[i], "&") == 0){
-            printf("jsh: syntax error\n");
-            return NULL;
-        }
-    }
-
-    if (strcmp(argv[argc-1], "&") == 0){
-        background = true;
-        // remove the argument
-        free(argv[argc-1]);
-        argv[argc-1] = NULL;
-        argc--;
-    }
-
-    *out = (command_t){ .argc = argc, .argv = argv, .background = background};
-    return out;
-}
-
-command_t *read_command()
+command_t *read_command(int nb_j)
 {
     // Previous calculations
     char pwd[1024];
     getcwd(pwd, sizeof(pwd));
     char curdir[strlen(pwd) + 1];
     getcwd(curdir, sizeof(curdir));
-    long int nbjobs = 0;
+    long int nbjobs = nb_j;
     unsigned int nbcj = nbchiffres(nbjobs);
 
     // Formatted prompt
@@ -93,18 +63,33 @@ command_t *read_command()
     else
         sprintf(prompt, "%s[%ld]%s%s%s$ ", cyan, nbjobs, vert, curdir, normal);
 
+    // Reading...
+    command_t *out = malloc(sizeof(command_t));
     char *read = readline(prompt);
-
-    if (read == NULL) return parse_command("exit");
-
-    if (read[0] == '\0') {
-        free(read);
-        return NULL;
+    if (read == NULL)
+    {
+        char **argv = malloc(2 * sizeof(char *));
+        argv[0] = "exit";
+        argv[1] = NULL;
+        *out = (command_t){.argc = 1, .argv = argv};
+        return out;
     }
-
+    if (strcmp(read, "") == 0)
+    {
+        return read_command(nbjobs);
+    }
     add_history(read);
-
-    command_t *out = parse_command(read);
-    free(read);
+    char **argv = split_string(read, " ");
+    int argc;
+    bool bg = false;
+    for (argc = 0; argv[argc] != NULL; ++argc)
+    {
+        if (strcmp(argv[argc], "&") == 0 && argv[argc + 1] == NULL)
+        {
+            argv[argc] = NULL;
+            bg = true;
+        }
+    }
+    *out = (command_t){.argc = argc, .argv = argv, .bg = bg, .nb_jobs = nbjobs};
     return out;
 }
