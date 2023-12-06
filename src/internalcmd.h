@@ -7,4 +7,8 @@ int pwd();
 int cd(char *);
 int quit(int, command_t *);
 int showLastReturnCode();
+bool is_internal(char *);
+int exec_internal(command_t *);
+void exec_external(command_t *command);
+
 #endif

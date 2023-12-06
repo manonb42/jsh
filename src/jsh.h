@@ -13,6 +13,7 @@ typedef struct command_t
 typedef struct jsh_t
 {
     int last_exit_code;
+	int pid_to_stop;
 } jsh_t;
 
 extern jsh_t jsh;

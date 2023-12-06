@@ -34,7 +34,9 @@ int main()
         command_t *command = read_command(nb_jobs);
         exec_command(command);
 		nb_jobs = command->nb_jobs;
-        if(free_command(command)) exit(0);
+
+        if(free_command(command)) {
+			exit(0);}
 		nb_jobs--;
     }
 

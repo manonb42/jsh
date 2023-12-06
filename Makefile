@@ -8,13 +8,13 @@ OBJS:=$(patsubst src/%.c,build/%.o, $(SRC))
 
 .PHONY: build build_dir clean leak run
 
+build: build_dir $(EXEC)
+
 run : build
 	./$(EXEC)
 
 $(EXEC): $(OBJS)
 	$(CC) -Wall -o $@ $^ -lreadline
-
-build: build_dir $(EXEC)
 
 build_dir:
 	mkdir -p build
