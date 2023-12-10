@@ -11,15 +11,13 @@
 
 jsh_t jsh = {0};
 
-bool free_command(command_t *command)
+void free_command(command_t *command)
 {
     // returns true if command is in background
     for (int i = 0; i < command->argc; ++i)
         free(command->argv[i]);
     free(command->argv);
-    bool bg = command->bg;
     free(command);
-    return bg;
 }
 
 int main()
@@ -38,7 +36,9 @@ int main()
         exec_command(command);
         nb_jobs = command->nb_jobs;
 
-        if (free_command(command))
+        bool bg = command->bg;
+        free_command(command);
+        if (bg)
             exit(0);
 
         nb_jobs--;
