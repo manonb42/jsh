@@ -8,6 +8,7 @@
 
 #include "input.h"
 #include "exec.h"
+#include <wait.h>
 
 jsh_t jsh = {0};
 
@@ -18,6 +19,22 @@ void free_command(command_t *command)
         free(command->argv[i]);
     free(command->argv);
     free(command);
+}
+
+
+void check_background_jobs(){
+    int pid;
+    while ((pid = waitpid(-1, NULL, WNOHANG)) > 0){
+        for (int i=0; i<vector_length(&jsh.processes); ++i){
+            process_t* proc = vector_at(&jsh.processes, i);
+            if (proc->pid == pid){
+                vector_remove(&jsh.processes, i);
+                free(proc);
+                printf("%d\tDone\n", pid);
+                break;
+            }
+        }
+    }
 }
 
 int main()
@@ -31,6 +48,7 @@ int main()
         command_t *command;
         do {
             command = read_command();
+            check_background_jobs();
         } while( command == NULL );
 
         exec_command(command);
