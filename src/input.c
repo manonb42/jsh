@@ -58,18 +58,18 @@ command_t *parse_command(char *read){
             bg = true;
         }
     }
-    *out = (command_t){.argc = argc, .argv = argv, .bg = bg, .nb_jobs = 0};
+    *out = (command_t){.argc = argc, .argv = argv, .bg = bg };
     return out;
 }
 
-command_t *read_command(int nb_j)
+command_t *read_command()
 {
     // Previous calculations
     char pwd[1024];
     getcwd(pwd, sizeof(pwd));
     char curdir[strlen(pwd) + 1];
     getcwd(curdir, sizeof(curdir));
-    long int nbjobs = nb_j;
+    long int nbjobs = vector_length(&jsh.processes);
     unsigned int nbcj = nbchiffres(nbjobs);
 
     // Formatted prompt

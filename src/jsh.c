@@ -26,26 +26,15 @@ int main()
     rl_initialize();
     rl_outstream = stderr;
 
-    int nb_jobs = 0;
     while (1)
     {
         command_t *command;
         do {
-            command = read_command(0);
+            command = read_command();
         } while( command == NULL );
 
-        while (waitpid(-1, NULL, WNOHANG) > 0)
--            command->nb_jobs--;
-
         exec_command(command);
-        nb_jobs = command->nb_jobs;
-
-        bool bg = command->bg;
         free_command(command);
-        if (bg)
-            exit(0);
-
-        nb_jobs--;
     }
 
     return 0;
