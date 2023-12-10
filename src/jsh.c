@@ -29,9 +29,13 @@ int main()
     int nb_jobs = 0;
     while (1)
     {
-        command_t *command = read_command(nb_jobs);
+        command_t *command;
+        do {
+            command = read_command(0);
+        } while( command == NULL );
+
         while (waitpid(-1, NULL, WNOHANG) > 0)
-            command->nb_jobs--;
+-            command->nb_jobs--;
 
         exec_command(command);
         nb_jobs = command->nb_jobs;

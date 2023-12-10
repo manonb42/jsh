@@ -45,6 +45,23 @@ int nbchiffres(int nb)
     return i;
 }
 
+command_t *parse_command(char *read){
+    command_t *out = malloc(sizeof(command_t));
+    char **argv = split_string(read, " ");
+    int argc;
+    bool bg = false;
+    for (argc = 0; argv[argc] != NULL; ++argc)
+    {
+        if (strcmp(argv[argc], "&") == 0 && argv[argc + 1] == NULL)
+        {
+            argv[argc] = NULL;
+            bg = true;
+        }
+    }
+    *out = (command_t){.argc = argc, .argv = argv, .bg = bg, .nb_jobs = 0};
+    return out;
+}
+
 command_t *read_command(int nb_j)
 {
     // Previous calculations
@@ -63,33 +80,12 @@ command_t *read_command(int nb_j)
     else
         sprintf(prompt, "%s[%ld]%s%s%s$ ", cyan, nbjobs, vert, curdir, normal);
 
-    // Reading...
-    command_t *out = malloc(sizeof(command_t));
     char *read = readline(prompt);
-    if (read == NULL)
-    {
-        char **argv = malloc(2 * sizeof(char *));
-        argv[0] = "exit";
-        argv[1] = NULL;
-        *out = (command_t){.argc = 1, .argv = argv};
-        return out;
-    }
-    if (strcmp(read, "") == 0)
-    {
-        return read_command(nbjobs);
-    }
+    if (read == NULL) { return parse_command("exit");}
+    if (strcmp(read, "") == 0) { free(read); return NULL; }
     add_history(read);
-    char **argv = split_string(read, " ");
-    int argc;
-    bool bg = false;
-    for (argc = 0; argv[argc] != NULL; ++argc)
-    {
-        if (strcmp(argv[argc], "&") == 0 && argv[argc + 1] == NULL)
-        {
-            argv[argc] = NULL;
-            bg = true;
-        }
-    }
-    *out = (command_t){.argc = argc, .argv = argv, .bg = bg, .nb_jobs = nbjobs};
+
+    command_t *out = parse_command(read);
+    free(read);
     return out;
 }
