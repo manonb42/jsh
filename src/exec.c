@@ -39,7 +39,7 @@ void exec_external(command_t *command)
 		jsh.last_exit_code = WEXITSTATUS(status);
 	} else {
 		process_t *proc = calloc(sizeof(process_t), 1);
-		*proc = (process_t){ .pid = pid};
+		*proc = (process_t){ .pid = pid, .current_state = P_RUNNING, .notified_state = P_NONE};
 		vector_append(&jsh.processes, proc);
 	}
 }

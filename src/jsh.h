@@ -12,8 +12,20 @@ typedef struct command_t {
 
 void free_command(command_t *command);
 
+
+typedef enum process_state_t {
+   P_NONE,
+   P_RUNNING,
+   P_STOPPED,
+   P_DONE,
+   P_KILLED,
+   P_DETACHED
+} process_state_t;
+
 typedef struct process_t {
     int pid;
+    process_state_t current_state;
+    process_state_t notified_state;
 } process_t;
 
 typedef struct vector process_v;
