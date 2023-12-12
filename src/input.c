@@ -50,15 +50,27 @@ command_t *parse_command(char *read){
     char **argv = split_string(read, " ");
     int argc;
     bool bg = false;
+	//faudra changer la valeur mais bon pour l'instant ça va
+	char **cmd = calloc(512, sizeof(char *));
+	char *redir = "";
+	char *fic = "";
     for (argc = 0; argv[argc] != NULL; ++argc)
     {
+		if (strcmp(argv[argc], ">") == 0 && argv[argc + 1] == NULL) {
+			redir = ">";
+			fic = argv[argc + 1];
+			break;
+		}
+
         if (strcmp(argv[argc], "&") == 0 && argv[argc + 1] == NULL)
         {
             argv[argc] = NULL;
             bg = true;
         }
+		cmd[argc] = argv[argc];
     }
-    *out = (command_t){.argc = argc, .argv = argv, .bg = bg };
+	bool is_redir = strlen(redir) > 0;
+	*out = (command_t){.argc = argc, .is_redir = is_redir, .redir = redir, .fic = fic, .argv = cmd, .bg = bg};
     return out;
 }
 

@@ -6,6 +6,9 @@
 
 typedef struct command_t {
     bool bg; // true if the cmd has been called with '&'
+	bool is_redir; //true if cmd is part of a redirection
+	char *redir; //type of redirection
+	char *fic; //fic part of the redirection
     char **argv;
     int argc;
 } command_t;
