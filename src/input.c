@@ -57,6 +57,12 @@ command_t *parse_command(char *read){
 	int descr;
     for (argc = 0; argv[argc] != NULL; ++argc)
     {		
+		if (strcmp(argv[argc], "<") == 0 && argv[argc + 1] != NULL) {
+			redir = "<";
+			fic = argv[argc + 1];
+			descr = STDIN_FILENO;
+			break;
+		}
 		if (strcmp(argv[argc], "2>") == 0 && argv[argc + 1] != NULL) {
 			redir = ">";
 			fic = argv[argc + 1];

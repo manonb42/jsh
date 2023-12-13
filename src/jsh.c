@@ -73,7 +73,6 @@ int main(){
             command = read_command();
         } while( command == NULL );
         exec_command(command);
-		
         free_command(command);
     }
 
