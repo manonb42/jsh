@@ -24,24 +24,30 @@ int get_fd(command_t *command) {
 	return -1;
 }
 
-void asserting(int n, command_t *command) {
+int asserting(int n, command_t *command) {
 	if	(n < 0) {
 		perror("jsh open");
-		free_command(command);
-		exit(-1);
+		return -1;
 	}
+	return 0;
 }
+
 
 void exec_command(command_t *command)
 {
 	int original_stdout = dup(STDOUT_FILENO);
 	int original_stderr = dup(STDERR_FILENO);
+	int original_stdin = dup(STDIN_FILENO);
 
 	if(command->is_redir) {
 		int fd = get_fd(command);
-		asserting(fd, command);
+		if(asserting(fd, command) < 0) {
+			return;
+		}
 		int d = dup2(fd, command->descr);
-		asserting(d, command);
+		if(asserting(d, command) < 0) {
+			return;
+		}
 		close(fd);
 	}
 	char *cmd = command->argv[0];
@@ -57,12 +63,16 @@ void exec_command(command_t *command)
 		if(command->descr == STDOUT_FILENO) {
 		dup2(original_stdout, STDOUT_FILENO);
 		}
+		if(command->descr == STDIN_FILENO) {
+		dup2(original_stdout, STDIN_FILENO);
+		}
 		else {
 
 		dup2(original_stderr, STDERR_FILENO);
 		}
 		close(original_stdout);
 		close(original_stderr);
+		close(original_stdin);
 	}
 }
 
