@@ -54,21 +54,43 @@ command_t *parse_command(char *read){
 	char **cmd = calloc(512, sizeof(char *));
 	char *redir = "";
 	char *fic = "";
+	int descr;
     for (argc = 0; argv[argc] != NULL; ++argc)
-    {
+    {		
+		if (strcmp(argv[argc], "2>") == 0 && argv[argc + 1] != NULL) {
+			redir = ">";
+			fic = argv[argc + 1];
+			descr = STDERR_FILENO;
+			break;
+		}
+		if (strcmp(argv[argc], "2>|") == 0 && argv[argc + 1] != NULL) {
+			redir = ">|";
+			fic = argv[argc + 1];
+			descr = STDERR_FILENO;
+			break;
+		}
+		if (strcmp(argv[argc], "2>>") == 0 && argv[argc + 1] != NULL) {
+			redir = ">>";
+			fic = argv[argc + 1];
+			descr = STDERR_FILENO;
+			break;
+		}
 		if (strcmp(argv[argc], ">") == 0 && argv[argc + 1] != NULL) {
 			redir = ">";
 			fic = argv[argc + 1];
+			descr = STDOUT_FILENO;
 			break;
 		}
 		if (strcmp(argv[argc], ">|") == 0 && argv[argc + 1] != NULL) {
 			redir = ">|";
 			fic = argv[argc + 1];
+			descr = STDOUT_FILENO;
 			break;
 		}
 		if (strcmp(argv[argc], ">>") == 0 && argv[argc + 1] != NULL) {
 			redir = ">>";
 			fic = argv[argc + 1];
+			descr = STDOUT_FILENO;
 			break;
 		}
 
@@ -80,7 +102,7 @@ command_t *parse_command(char *read){
 		cmd[argc] = argv[argc];
     }
 	bool is_redir = strlen(redir) > 0;
-	*out = (command_t){.argc = argc, .is_redir = is_redir, .redir = redir, .fic = fic, .argv = cmd, .bg = bg};
+	*out = (command_t){.argc = argc, .is_redir = is_redir,.descr = descr, .redir = redir, .fic = fic, .argv = cmd, .bg = bg};
     return out;
 }
 

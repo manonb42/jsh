@@ -11,19 +11,6 @@
 
 #include "internalcmd.h"
 
-void exec_command(command_t *command)
-{
-
-	char *cmd = command->argv[0];
-
-	if (is_internal(cmd)) {
-		command->bg = false;
-		jsh.last_exit_code = exec_internal(command);
-	}
-	else
-		exec_external(command);
-}
-
 int get_fd(command_t *command) {
 	if (!strcmp(command->redir, "<"))
         return open(command->fic, O_RDONLY);
@@ -45,16 +32,44 @@ void asserting(int n, command_t *command) {
 	}
 }
 
-void exec_external(command_t *command)
+void exec_command(command_t *command)
 {
+	int original_stdout = dup(STDOUT_FILENO);
+	int original_stderr = dup(STDERR_FILENO);
 
 	if(command->is_redir) {
 		int fd = get_fd(command);
 		asserting(fd, command);
-		int d = dup2(fd, STDOUT_FILENO);
+		int d = dup2(fd, command->descr);
 		asserting(d, command);
 		close(fd);
 	}
+	char *cmd = command->argv[0];
+
+	if (is_internal(cmd)) {
+		command->bg = false;
+		jsh.last_exit_code = exec_internal(command);
+	}
+	else {
+		exec_external(command);
+	}
+	if(command->is_redir) {
+		if(command->descr == STDOUT_FILENO) {
+		dup2(original_stdout, STDOUT_FILENO);
+		}
+		else {
+
+		dup2(original_stderr, STDERR_FILENO);
+		}
+		close(original_stdout);
+		close(original_stderr);
+	}
+}
+
+
+void exec_external(command_t *command)
+{
+	
 	int pid = fork();
 
 	if (pid == 0) {
@@ -73,4 +88,5 @@ void exec_external(command_t *command)
 		*proc = (process_t){ .pid = pid, .current_state = P_RUNNING, .notified_state = P_NONE};
 		vector_append(&jsh.processes, proc);
 	}
+
 }
