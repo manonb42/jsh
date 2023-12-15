@@ -5,6 +5,9 @@
 #include <unistd.h>
 #include <wait.h>
 #include <stdbool.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "internalcmd.h"
 
@@ -21,9 +24,37 @@ void exec_command(command_t *command)
 		exec_external(command);
 }
 
+int get_fd(command_t *command) {
+	if (!strcmp(command->redir, "<"))
+        return open(command->fic, O_RDONLY);
+    if (!strcmp(command->redir, ">"))
+        return open(command->fic, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
+    if (!strcmp(command->redir, ">|"))
+        return open(command->fic, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
+    if (!strcmp(command->redir, ">>")) {
+        return open(command->fic, O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
+	}
+	return -1;
+}
+
+void asserting(int n, command_t *command) {
+	if	(n < 0) {
+		perror("jsh open");
+		free_command(command);
+		exit(-1);
+	}
+}
+
 void exec_external(command_t *command)
 {
 
+	if(command->is_redir) {
+		int fd = get_fd(command);
+		asserting(fd, command);
+		int d = dup2(fd, STDOUT_FILENO);
+		asserting(d, command);
+		close(fd);
+	}
 	int pid = fork();
 
 	if (pid == 0) {

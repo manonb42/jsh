@@ -72,8 +72,8 @@ int main(){
             notify_job_state_changes();
             command = read_command();
         } while( command == NULL );
-
         exec_command(command);
+		
         free_command(command);
     }
 

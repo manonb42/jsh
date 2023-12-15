@@ -56,8 +56,18 @@ command_t *parse_command(char *read){
 	char *fic = "";
     for (argc = 0; argv[argc] != NULL; ++argc)
     {
-		if (strcmp(argv[argc], ">") == 0 && argv[argc + 1] == NULL) {
+		if (strcmp(argv[argc], ">") == 0 && argv[argc + 1] != NULL) {
 			redir = ">";
+			fic = argv[argc + 1];
+			break;
+		}
+		if (strcmp(argv[argc], ">|") == 0 && argv[argc + 1] != NULL) {
+			redir = ">|";
+			fic = argv[argc + 1];
+			break;
+		}
+		if (strcmp(argv[argc], ">>") == 0 && argv[argc + 1] != NULL) {
+			redir = ">>";
 			fic = argv[argc + 1];
 			break;
 		}
