@@ -46,69 +46,62 @@ int nbchiffres(int nb)
 }
 
 command_t *parse_command(char *read){
-    command_t *out = malloc(sizeof(command_t));
+    command_t *out = calloc(1, sizeof(command_t));
     char **argv = split_string(read, " ");
     int argc;
-    bool bg = false;
 	//faudra changer la valeur mais bon pour l'instant ça va
 	char **cmd = calloc(512, sizeof(char *));
-	char *redir = "";
-	char *fic = "";
-	int descr;
     for (argc = 0; argv[argc] != NULL; ++argc)
     {		
 		if (strcmp(argv[argc], "<") == 0 && argv[argc + 1] != NULL) {
-			redir = "<";
-			fic = argv[argc + 1];
-			descr = STDIN_FILENO;
+			out->stdin.type = R_INPUT;
+			out->stdin.path = argv[argc + 1];
 			break;
 		}
 		if (strcmp(argv[argc], "2>") == 0 && argv[argc + 1] != NULL) {
-			redir = ">";
-			fic = argv[argc + 1];
-			descr = STDERR_FILENO;
+			out->stderr.type = R_NO_CLOBBER;
+			out->stderr.path = argv[argc + 1];
 			break;
 		}
 		if (strcmp(argv[argc], "2>|") == 0 && argv[argc + 1] != NULL) {
-			redir = ">|";
-			fic = argv[argc + 1];
-			descr = STDERR_FILENO;
+			out->stderr.type = R_CLOBBER;
+			out->stderr.path = argv[argc + 1];
 			break;
 		}
 		if (strcmp(argv[argc], "2>>") == 0 && argv[argc + 1] != NULL) {
-			redir = ">>";
-			fic = argv[argc + 1];
-			descr = STDERR_FILENO;
+			out->stderr.type = R_APPEND;
+			out->stderr.path = argv[argc + 1];
 			break;
 		}
 		if (strcmp(argv[argc], ">") == 0 && argv[argc + 1] != NULL) {
-			redir = ">";
-			fic = argv[argc + 1];
-			descr = STDOUT_FILENO;
+			out->stdout.type = R_NO_CLOBBER;
+			out->stdout.path = argv[argc + 1];
 			break;
 		}
 		if (strcmp(argv[argc], ">|") == 0 && argv[argc + 1] != NULL) {
-			redir = ">|";
-			fic = argv[argc + 1];
-			descr = STDOUT_FILENO;
+			out->stdout.type = R_CLOBBER;
+			out->stdout.path = argv[argc + 1];
 			break;
 		}
 		if (strcmp(argv[argc], ">>") == 0 && argv[argc + 1] != NULL) {
-			redir = ">>";
-			fic = argv[argc + 1];
-			descr = STDOUT_FILENO;
+			out->stdout.type = R_APPEND;
+			out->stdout.path = argv[argc + 1];
 			break;
 		}
 
         if (strcmp(argv[argc], "&") == 0 && argv[argc + 1] == NULL)
         {
             argv[argc] = NULL;
-            bg = true;
+            out->bg = true;
         }
-		cmd[argc] = argv[argc];
+
+        cmd[argc] = argv[argc];
     }
-	bool is_redir = strlen(redir) > 0;
-	*out = (command_t){.argc = argc, .is_redir = is_redir,.descr = descr, .redir = redir, .fic = fic, .argv = cmd, .bg = bg};
+
+
+    out->argv = argv;
+    out->argc = argc;
+
     return out;
 }
 

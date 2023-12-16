@@ -11,93 +11,94 @@
 
 #include "internalcmd.h"
 
-int get_fd(command_t *command) {
-	if (!strcmp(command->redir, "<"))
-        return open(command->fic, O_RDONLY);
-    if (!strcmp(command->redir, ">"))
-        return open(command->fic, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
-    if (!strcmp(command->redir, ">|"))
-        return open(command->fic, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
-    if (!strcmp(command->redir, ">>")) {
-        return open(command->fic, O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR);
-	}
-	return -1;
+int get_fd(command_redir_t redir) {
+    int out;
+    switch (redir.type){
+        case R_INPUT:      out = open(redir.path, O_RDONLY | O_CLOEXEC); break;
+        case R_NO_CLOBBER: out = open(redir.path, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC | O_CLOEXEC, S_IRUSR | S_IWUSR); break;
+        case R_CLOBBER:    out = open(redir.path, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, S_IRUSR | S_IWUSR); break;
+        case R_APPEND:     out = open(redir.path, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, S_IRUSR | S_IWUSR); break;
+        default: return -1;
+    }
+    if (out >= 0) return out;
+    else { perror("jsh"); return -1; }
 }
 
 int asserting(int n, command_t *command) {
-	if	(n < 0) {
-		perror("jsh open");
-		return -1;
-	}
-	return 0;
+    if    (n < 0) {
+        perror("jsh");
+        return -1;
+    }
+    return 0;
 }
 
 
 int exec_external(command_t *command)
 {
 
-	int pid = fork();
+    int pid = fork();
 
-	if (pid == 0) {
-		execvp(command->argv[0], command->argv);
-		perror("jsh");
-		free_command(command);
-		exit(127);
-	}
-	else if (!command->bg) {
-		int status;
-		waitpid(pid, &status, 0);
-		return WEXITSTATUS(status);
-	} else {
-		process_t *proc = calloc(sizeof(process_t), 1);
-		*proc = (process_t){ .pid = pid, .current_state = P_RUNNING, .notified_state = P_NONE};
-		vector_append(&jsh.processes, proc);
-		return 0;
-	}
+    if (pid == 0) {
+        execvp(command->argv[0], command->argv);
+        perror("jsh");
+        exit(127);
+    }
+    else if (!command->bg) {
+        int status;
+        waitpid(pid, &status, 0);
+        return WEXITSTATUS(status);
+    } else {
+        process_t *proc = calloc(sizeof(process_t), 1);
+        *proc = (process_t){ .pid = pid, .current_state = P_RUNNING, .notified_state = P_NONE};
+        vector_append(&jsh.processes, proc);
+        return 0;
+    }
 
 }
 
 void exec_command(command_t *command)
 {
-	int original_stdout = dup(STDOUT_FILENO);
-	int original_stderr = dup(STDERR_FILENO);
-	int original_stdin = dup(STDIN_FILENO);
 
-	if(command->is_redir) {
-		int fd = get_fd(command);
-		if(asserting(fd, command) < 0) {
-			return;
-		}
-		int d = dup2(fd, command->descr);
-		if(asserting(d, command) < 0) {
-			return;
-		}
-		close(fd);
-	}
-	char *cmd = command->argv[0];
+    int original_stdin  = dup(STDIN_FILENO);
+    int original_stdout = dup(STDOUT_FILENO);
+    int original_stderr = dup(STDERR_FILENO);
 
-	if (is_internal(cmd)) {
-		command->bg = false;
-		jsh.last_exit_code = exec_internal(command);
-	}
-	else {
-		jsh.last_exit_code = exec_external(command);
-	}
-	if(command->is_redir) {
-		if(command->descr == STDOUT_FILENO) {
-		dup2(original_stdout, STDOUT_FILENO);
-		}
-		if(command->descr == STDIN_FILENO) {
-		dup2(original_stdout, STDIN_FILENO);
-		}
-		else {
+    if(command->stdin.type != R_NONE) {
+        int fd = get_fd(command->stdin) ;
+        if (fd < 0) return;
+        dup2(fd, STDIN_FILENO);
+        close(fd);
+    }
 
-		dup2(original_stderr, STDERR_FILENO);
-		}
-		close(original_stdout);
-		close(original_stderr);
-		close(original_stdin);
+    if(command->stdout.type != R_NONE) {
+        int fd = get_fd(command->stdout) ;
+        if (fd < 0) return;
+        dup2(fd, STDOUT_FILENO);
+        close(fd);
 	}
+
+    if(command->stderr.type != R_NONE) {
+        int fd = get_fd(command->stderr) ;
+        if (fd < 0) return;
+        dup2(fd, STDERR_FILENO);
+        close(fd);
+	}
+
+    char *cmd = command->argv[0];
+
+    if (is_internal(cmd)) {
+        command->bg = false;
+        jsh.last_exit_code = exec_internal(command);
+    }
+    else {
+        jsh.last_exit_code = exec_external(command);
+    }
+
+	dup2(original_stdin,  STDIN_FILENO);
+	dup2(original_stdout, STDOUT_FILENO);
+	dup2(original_stderr, STDERR_FILENO);
+
+	close(original_stdin);
+	close(original_stdout);
+	close(original_stderr);
 }
-
-

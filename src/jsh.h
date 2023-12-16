@@ -4,12 +4,28 @@
 #include "vector.h"
 
 
+typedef enum command_redir_type_t {
+  R_NONE,
+  R_INPUT,
+  R_NO_CLOBBER,
+  R_CLOBBER,
+  R_APPEND,
+} command_redir_type_t;
+
+
+typedef struct command_redir_t {
+  command_redir_type_t type;
+  char *path;
+} command_redir_t;
+
+
 typedef struct command_t {
-    bool bg; // true if the cmd has been called with '&'
-	bool is_redir; //true if cmd is part of a redirection
-	char *redir; //type of redirection
-	int descr; //stdout, stderr or stdin
-	char *fic; //fic part of the redirection
+    bool bg;
+
+    command_redir_t stdin;
+    command_redir_t stdout;
+    command_redir_t stderr;
+
     char **argv;
     int argc;
 } command_t;
