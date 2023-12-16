@@ -29,7 +29,7 @@ typedef struct command_t {
     char **argv;
     int argc;
 
-    char **line;
+    char *line;
 } command_t;
 
 void free_command(command_t *command);
@@ -49,6 +49,7 @@ typedef struct process_t {
     int pid;
     process_state_t current_state;
     process_state_t notified_state;
+    char *line;
 } process_t;
 
 typedef struct vector process_v;

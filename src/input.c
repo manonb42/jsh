@@ -50,26 +50,28 @@ int nbchiffres(int nb)
 
 command_t *parse_command(char *read){
     command_t *out = calloc(1, sizeof(command_t));
-    char **line = split_string(read, " ");
+    char *line = strdup(read);
+    char **parts = split_string(read, " ");
     vector argv = vector_empty();
 
     char *symbols[] = {"<", ">", ">|", ">>", "2>", "2>|", "2>>"};
     command_redir_type_t flags[] = { R_INPUT, R_NO_CLOBBER, R_CLOBBER, R_APPEND, R_NO_CLOBBER, R_CLOBBER, R_APPEND };
     command_redir_t *target[] = { &out->stdin,  &out->stdout,  &out->stdout,  &out->stdout,  &out->stderr, &out->stderr,  &out->stderr };
 
-    for (int i = 0; line[i] != NULL; ++i)
+    for (int i = 0; parts[i] != NULL; ++i)
     {
 
-        if (strcmp(line[i], "&") == 0 && line[i+1] == NULL){
+        if (strcmp(parts[i], "&") == 0 && parts[i+1] == NULL){
+            line[strlen(line)-1] = '\0';
             out->bg = true;
             continue;
         }
 
         bool redir = false;
         for (int j=0; j<sizeof(symbols)/sizeof(char*); ++j){
-            if (strcmp(line[i], symbols[j]) == 0 && line[i+1] != NULL) {
+            if (strcmp(parts[i], symbols[j]) == 0 && parts[i+1] != NULL) {
                 target[j]->type = flags[j];
-                target[j]->path = line[i+1];
+                target[j]->path = strdup(parts[i+1]);
                 i += 1;
                 redir = true;
                 break;
@@ -78,9 +80,11 @@ command_t *parse_command(char *read){
 
         if (redir) continue;
 
-        vector_append(&argv, line[i]);
+        vector_append(&argv, strdup(parts[i]));
     }
 
+    for (int i=0; parts[i] != NULL; ++i) free(parts[i]);
+    free(parts);
 
     vector_append(&argv, NULL);
     vector_shrink(&argv);

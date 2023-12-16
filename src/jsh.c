@@ -17,8 +17,11 @@ jsh_t jsh = {0};
 
 void free_command(command_t *command)
 {
-    for (int i = 0; command->line[i] != NULL; ++i)
-        free(command->line[i]);
+    for (int i = 0; command->argv[i] != NULL; ++i)
+        free(command->argv[i]);
+    free(command->stdin.path);
+    free(command->stdout.path);
+    free(command->stderr.path);
     free(command->argv);
     free(command->line);
     free(command);
@@ -42,7 +45,7 @@ void notify_job_state_changes(){
             case P_DETACHED: state = "Detached"; break;
         }
 
-        printf("[%d] %d\t%s\n", proc->jid, proc->pid, state);
+        fprintf(stderr, "[%d] %d\t%s\t%s\n", proc->jid, proc->pid, state, proc->line);
         proc->notified_state = proc->current_state;
 
         if (proc->current_state >= P_DONE){

@@ -42,7 +42,7 @@ int exec_external(command_t *command)
         return WEXITSTATUS(status);
     } else {
         process_t *proc = calloc(sizeof(process_t), 1);
-        *proc = (process_t){ .pid = pid, .current_state = P_RUNNING, .notified_state = P_NONE};
+        *proc = (process_t){ .pid = pid, .current_state = P_RUNNING, .notified_state = P_NONE, .line = strdup(command->line)};
         job_track(proc);
         return 0;
     }
