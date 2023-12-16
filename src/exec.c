@@ -15,21 +15,13 @@ int get_fd(command_redir_t redir) {
     int out;
     switch (redir.type){
         case R_INPUT:      out = open(redir.path, O_RDONLY | O_CLOEXEC); break;
-        case R_NO_CLOBBER: out = open(redir.path, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC | O_CLOEXEC, S_IRUSR | S_IWUSR); break;
-        case R_CLOBBER:    out = open(redir.path, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, S_IRUSR | S_IWUSR); break;
-        case R_APPEND:     out = open(redir.path, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, S_IRUSR | S_IWUSR); break;
+        case R_NO_CLOBBER: out = open(redir.path, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC | O_CLOEXEC, 0644); break;
+        case R_CLOBBER:    out = open(redir.path, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0644); break;
+        case R_APPEND:     out = open(redir.path, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0644); break;
         default: return -1;
     }
     if (out >= 0) return out;
     else { perror("jsh"); return -1; }
-}
-
-int asserting(int n, command_t *command) {
-    if    (n < 0) {
-        perror("jsh");
-        return -1;
-    }
-    return 0;
 }
 
 
@@ -65,21 +57,21 @@ void exec_command(command_t *command)
 
     if(command->stdin.type != R_NONE) {
         int fd = get_fd(command->stdin) ;
-        if (fd < 0) return;
+        if (fd < 0) { jsh.last_exit_code = 1; return; }
         dup2(fd, STDIN_FILENO);
         close(fd);
     }
 
     if(command->stdout.type != R_NONE) {
         int fd = get_fd(command->stdout) ;
-        if (fd < 0) return;
+        if (fd < 0) { jsh.last_exit_code = 1; return; }
         dup2(fd, STDOUT_FILENO);
         close(fd);
 	}
 
     if(command->stderr.type != R_NONE) {
         int fd = get_fd(command->stderr) ;
-        if (fd < 0) return;
+        if (fd < 0) { jsh.last_exit_code = 1; return; }
         dup2(fd, STDERR_FILENO);
         close(fd);
 	}
