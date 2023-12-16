@@ -34,7 +34,9 @@ int vector_length(vector *v){
 
 void resize_vector(vector *v, int cap){
   assert(v->len <= cap);
+  void **old = v->data;
   v->data = memcpy(calloc(sizeof(void*), cap), v->data, sizeof(void*) * v->len);
+  free(old);
   v->cap = cap;
 }
 
