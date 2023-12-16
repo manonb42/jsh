@@ -45,6 +45,7 @@ typedef enum process_state_t {
 } process_state_t;
 
 typedef struct process_t {
+    int jid;
     int pid;
     process_state_t current_state;
     process_state_t notified_state;

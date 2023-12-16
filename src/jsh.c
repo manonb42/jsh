@@ -8,7 +8,10 @@
 
 #include "input.h"
 #include "exec.h"
+#include "jobs.h"
+
 #include <wait.h>
+
 
 jsh_t jsh = {0};
 
@@ -23,8 +26,10 @@ void free_command(command_t *command)
 
 void notify_job_state_changes(){
 
-    for (int i=0; i< vector_length(&jsh.processes); ++i){
+    for (int i=0; i < vector_length(&jsh.processes); ++i){
+
         process_t* proc = vector_at(&jsh.processes, i);
+        if (proc == NULL) continue;
         if (proc->current_state == proc->notified_state) continue;
 
         char *state;
@@ -37,11 +42,11 @@ void notify_job_state_changes(){
             case P_DETACHED: state = "Detached"; break;
         }
 
-        printf("%d\t%s\n", proc->pid, state);
+        printf("[%d] %d\t%s\n", proc->jid, proc->pid, state);
         proc->notified_state = proc->current_state;
 
         if (proc->current_state >= P_DONE){
-            vector_remove(&jsh.processes, i--);
+            job_untrack(proc);
             free(proc);
         }
     }
@@ -52,6 +57,7 @@ void update_background_job_states(){
     while ((pid = waitpid(-1, &wstatus, WNOHANG | WUNTRACED)) > 0){
         for (int i=0; i<vector_length(&jsh.processes); ++i){
             process_t* proc = vector_at(&jsh.processes, i);
+            if (proc == NULL) continue;
             if (proc->pid != pid) continue;
             if (WIFEXITED(wstatus)) proc->current_state = P_DONE;
             if (WIFSIGNALED(wstatus)) proc->current_state = P_KILLED;

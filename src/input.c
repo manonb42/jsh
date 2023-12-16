@@ -8,6 +8,8 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+#include "jobs.h"
+
 // Global Variables - Colors
 char *vert = "\001\033[32m\002";
 char *cyan = "\001\033[36m\002";
@@ -96,7 +98,7 @@ command_t *read_command()
     getcwd(pwd, sizeof(pwd));
     char curdir[strlen(pwd) + 1];
     getcwd(curdir, sizeof(curdir));
-    long int nbjobs = vector_length(&jsh.processes);
+    long int nbjobs = job_count(&jsh.processes);
     unsigned int nbcj = nbchiffres(nbjobs);
 
     // Formatted prompt

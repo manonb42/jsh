@@ -10,6 +10,7 @@
 #include <fcntl.h>
 
 #include "internalcmd.h"
+#include "jobs.h"
 
 int get_fd(command_redir_t redir) {
     int out;
@@ -42,7 +43,7 @@ int exec_external(command_t *command)
     } else {
         process_t *proc = calloc(sizeof(process_t), 1);
         *proc = (process_t){ .pid = pid, .current_state = P_RUNNING, .notified_state = P_NONE};
-        vector_append(&jsh.processes, proc);
+        job_track(proc);
         return 0;
     }
 
@@ -67,14 +68,14 @@ void exec_command(command_t *command)
         if (fd < 0) { jsh.last_exit_code = 1; return; }
         dup2(fd, STDOUT_FILENO);
         close(fd);
-	}
+    }
 
     if(command->stderr.type != R_NONE) {
         int fd = get_fd(command->stderr) ;
         if (fd < 0) { jsh.last_exit_code = 1; return; }
         dup2(fd, STDERR_FILENO);
         close(fd);
-	}
+    }
 
     char *cmd = command->argv[0];
 
@@ -86,11 +87,11 @@ void exec_command(command_t *command)
         jsh.last_exit_code = exec_external(command);
     }
 
-	dup2(original_stdin,  STDIN_FILENO);
-	dup2(original_stdout, STDOUT_FILENO);
-	dup2(original_stderr, STDERR_FILENO);
+    dup2(original_stdin,  STDIN_FILENO);
+    dup2(original_stdout, STDOUT_FILENO);
+    dup2(original_stderr, STDERR_FILENO);
 
-	close(original_stdin);
-	close(original_stdout);
-	close(original_stderr);
+    close(original_stdin);
+    close(original_stdout);
+    close(original_stderr);
 }
