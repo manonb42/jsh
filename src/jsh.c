@@ -14,9 +14,10 @@ jsh_t jsh = {0};
 
 void free_command(command_t *command)
 {
-    for (int i = 0; i < command->argc; ++i)
-        free(command->argv[i]);
+    for (int i = 0; command->line[i] != NULL; ++i)
+        free(command->line[i]);
     free(command->argv);
+    free(command->line);
     free(command);
 }
 

@@ -1,4 +1,5 @@
 #include "input.h"
+#include "vector.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -47,60 +48,43 @@ int nbchiffres(int nb)
 
 command_t *parse_command(char *read){
     command_t *out = calloc(1, sizeof(command_t));
-    char **argv = split_string(read, " ");
-    int argc;
-	//faudra changer la valeur mais bon pour l'instant ça va
-	char **cmd = calloc(512, sizeof(char *));
-    for (argc = 0; argv[argc] != NULL; ++argc)
-    {		
-		if (strcmp(argv[argc], "<") == 0 && argv[argc + 1] != NULL) {
-			out->stdin.type = R_INPUT;
-			out->stdin.path = argv[argc + 1];
-			break;
-		}
-		if (strcmp(argv[argc], "2>") == 0 && argv[argc + 1] != NULL) {
-			out->stderr.type = R_NO_CLOBBER;
-			out->stderr.path = argv[argc + 1];
-			break;
-		}
-		if (strcmp(argv[argc], "2>|") == 0 && argv[argc + 1] != NULL) {
-			out->stderr.type = R_CLOBBER;
-			out->stderr.path = argv[argc + 1];
-			break;
-		}
-		if (strcmp(argv[argc], "2>>") == 0 && argv[argc + 1] != NULL) {
-			out->stderr.type = R_APPEND;
-			out->stderr.path = argv[argc + 1];
-			break;
-		}
-		if (strcmp(argv[argc], ">") == 0 && argv[argc + 1] != NULL) {
-			out->stdout.type = R_NO_CLOBBER;
-			out->stdout.path = argv[argc + 1];
-			break;
-		}
-		if (strcmp(argv[argc], ">|") == 0 && argv[argc + 1] != NULL) {
-			out->stdout.type = R_CLOBBER;
-			out->stdout.path = argv[argc + 1];
-			break;
-		}
-		if (strcmp(argv[argc], ">>") == 0 && argv[argc + 1] != NULL) {
-			out->stdout.type = R_APPEND;
-			out->stdout.path = argv[argc + 1];
-			break;
-		}
+    char **line = split_string(read, " ");
+    vector argv = vector_empty();
 
-        if (strcmp(argv[argc], "&") == 0 && argv[argc + 1] == NULL)
-        {
-            argv[argc] = NULL;
+    char *symbols[] = {"<", ">", ">|", ">>", "2>", "2>|", "2>>"};
+    command_redir_type_t flags[] = { R_INPUT, R_NO_CLOBBER, R_CLOBBER, R_APPEND, R_NO_CLOBBER, R_CLOBBER, R_APPEND };
+    command_redir_t *target[] = { &out->stdin,  &out->stdout,  &out->stdout,  &out->stdout,  &out->stderr, &out->stderr,  &out->stderr };
+
+    for (int i = 0; line[i] != NULL; ++i)
+    {
+
+        if (strcmp(line[i], "&") == 0 && line[i+1] == NULL){
             out->bg = true;
+            continue;
         }
 
-        cmd[argc] = argv[argc];
+        bool redir = false;
+        for (int j=0; j<sizeof(symbols)/sizeof(char*); ++j){
+            if (strcmp(line[i], symbols[j]) == 0 && line[i+1] != NULL) {
+                target[j]->type = flags[j];
+                target[j]->path = line[i+1];
+                i += 1;
+                redir = true;
+                break;
+            }
+        }
+
+        if (redir) continue;
+
+        vector_append(&argv, line[i]);
     }
 
 
-    out->argv = argv;
-    out->argc = argc;
+    vector_append(&argv, NULL);
+    vector_shrink(&argv);
+    out->argc = vector_length(&argv) - 1;
+    out->argv = (char**)argv.data;
+    out->line = line;
 
     return out;
 }

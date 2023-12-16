@@ -28,6 +28,8 @@ typedef struct command_t {
 
     char **argv;
     int argc;
+
+    char **line;
 } command_t;
 
 void free_command(command_t *command);
