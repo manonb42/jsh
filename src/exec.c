@@ -16,9 +16,9 @@ int get_fd(command_redir_t redir) {
     int out;
     switch (redir.type){
         case R_INPUT:      out = open(redir.path, O_RDONLY | O_CLOEXEC); break;
-        case R_NO_CLOBBER: out = open(redir.path, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC | O_CLOEXEC, 0644); break;
-        case R_CLOBBER:    out = open(redir.path, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0644); break;
-        case R_APPEND:     out = open(redir.path, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0644); break;
+        case R_NO_CLOBBER: out = open(redir.path, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC | O_CLOEXEC, 0664); break;
+        case R_CLOBBER:    out = open(redir.path, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0664); break;
+        case R_APPEND:     out = open(redir.path, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0664); break;
         default: return -1;
     }
     if (out >= 0) return out;
