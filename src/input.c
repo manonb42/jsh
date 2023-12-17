@@ -62,7 +62,7 @@ command_t *parse_command(char *read){
     {
 
         if (strcmp(parts[i], "&") == 0 && parts[i+1] == NULL){
-            line[strlen(line)-1] = '\0';
+            line[strlen(line)-2] = '\0';
             out->bg = true;
             continue;
         }
