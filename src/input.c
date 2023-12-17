@@ -99,7 +99,7 @@ command_t *read_command()
     getcwd(pwd, sizeof(pwd));
     char curdir[strlen(pwd) + 1];
     getcwd(curdir, sizeof(curdir));
-    long int nbjobs = job_count(&jsh.processes);
+    long int nbjobs = job_count();
     unsigned int nbcj = nbchiffres(nbjobs);
 
     // Formatted prompt

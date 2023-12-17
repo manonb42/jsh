@@ -45,7 +45,6 @@ typedef enum process_state_t {
 } process_state_t;
 
 typedef struct process_t {
-    int jid;
     int pid;
     process_state_t current_state;
     process_state_t notified_state;
@@ -54,10 +53,24 @@ typedef struct process_t {
 
 typedef struct vector process_v;
 
+typedef struct job_t {
+    int jid;
+    int pgid;
+
+    process_v processes;
+    process_state_t current_state;
+    process_state_t notified_state;
+
+    char *line;
+} job_t;
+
+typedef struct vector job_v;
+
+
 typedef struct jsh_t
 {
     int last_exit_code;
-    process_v processes;
+    job_v jobs;
 } jsh_t;
 
 extern jsh_t jsh;

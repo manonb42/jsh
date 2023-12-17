@@ -103,9 +103,9 @@ int exec_show_last_return_code()
 int exec_jobs(){
     job_update_background_states();
 
-    for (int i=0; i < vector_length(&jsh.processes); ++i){
+    for (int i=0; i < vector_length(&jsh.jobs); ++i){
 
-        process_t* proc = vector_at(&jsh.processes, i);
+        job_t* proc = vector_at(&jsh.jobs, i);
         if (proc == NULL) continue;
 
         job_notify_state(proc);
@@ -135,9 +135,9 @@ int exec_kill(command_t *command){
     }
 
     if (job) {
-        process_t *proc = job_by_id(targetnum);
-        if (proc == NULL){ fprintf(stderr, "jsh: kill: bad job id\n"); return 1; }
-        pid = proc->pid;
+        job_t *job = job_by_id(targetnum);
+        if (job == NULL){ fprintf(stderr, "jsh: kill: bad job id\n"); return 1; }
+        pid = -job->pgid;
     } else { pid = targetnum; }
 
     kill(pid, signum);
