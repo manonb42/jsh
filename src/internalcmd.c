@@ -81,7 +81,7 @@ int exec_exit(int code, command_t *command)
 {
     if (job_count() > 0) return 1;
 
-    if (!parse_number(command->argv[1], &code)) {
+    if (command->argc > 1 && !parse_number(command->argv[1], &code)) {
         fprintf(stderr, "jsh: exit: bad argument\n");
         return 1;
     }
