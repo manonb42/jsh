@@ -4,7 +4,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-char *internals[] = {"pwd", "cd", "exit", "?"};
+#include "jobs.h"
+
+char *internals[] = {"pwd", "cd", "exit", "?", "kill", "jobs"};
 
 int exec_pwd()
 {
@@ -64,6 +66,8 @@ int exec_cd(char *path)
 
 int exec_exit(int code, command_t *command)
 {
+
+    if (job_count() > 0) return 1;
     if (command->argc == 2)
     {
         char *end;
@@ -88,6 +92,16 @@ int exec_show_last_return_code()
     return 0;
 }
 
+int exec_jobs(){
+    printf("TODO\n");
+    return 1;
+}
+
+int exec_kill(){
+    printf("TODO\n");
+    return 1;
+}
+
 bool is_internal(char *name)
 {
     for (unsigned long i = 0; i < sizeof(internals) / sizeof(char *); ++i)
@@ -107,5 +121,9 @@ int exec_internal(command_t *command)
         return exec_cd(command->argv[1]);
     else if (strcmp(cmd, "exit") == 0)
         return exec_exit(jsh.last_exit_code, command);
+    else if (strcmp(cmd, "jobs") == 0)
+        return exec_jobs(jsh.last_exit_code, command);
+    else if (strcmp(cmd, "kill") == 0)
+        return exec_kill(jsh.last_exit_code, command);
     return -1;
 }
