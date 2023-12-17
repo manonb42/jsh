@@ -85,3 +85,8 @@ void job_update_background_states(){
         }
     }
 }
+
+process_t *job_by_id(int jid){
+  if (vector_length(&jsh.processes) <= jid-1) return NULL;
+  return vector_at(&jsh.processes, jid-1);
+}

@@ -12,4 +12,5 @@ void job_notify_state_changes();
 void job_update_background_states();
 
 
+process_t *job_by_id(int jid);
 #endif // JOBS_H_
