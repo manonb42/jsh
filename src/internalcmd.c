@@ -116,7 +116,7 @@ int exec_jobs(){
 int exec_kill(command_t *command){
     if (command->argc < 2) fprintf(stderr, "jsh: kill: missing argument\n");
 
-    char *sig = command->argc == 3 ? command->argv[1] : "-9";
+    char *sig = command->argc == 3 ? command->argv[1] : "-15";
     char *target = command->argv[command->argc-1];
 
     bool job = target[0] == '%';
