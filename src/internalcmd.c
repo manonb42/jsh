@@ -93,8 +93,16 @@ int exec_show_last_return_code()
 }
 
 int exec_jobs(){
-    printf("TODO\n");
-    return 1;
+    job_update_background_states();
+
+    for (int i=0; i < vector_length(&jsh.processes); ++i){
+
+        process_t* proc = vector_at(&jsh.processes, i);
+        if (proc == NULL) continue;
+
+        job_notify_state(proc);
+    }
+    return 0;
 }
 
 int exec_kill(){
