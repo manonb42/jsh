@@ -30,6 +30,35 @@ void job_track(process_t *proc){
   else vector_append(&jsh.processes, proc);
 }
 
+
+void job_display_state(process_t *proc){
+
+    char *state;
+    switch (proc->current_state) {
+        case P_NONE: state = "???"; break;
+        case P_RUNNING: state = "Running"; break;
+        case P_STOPPED: state = "Stopped"; break;
+        case P_DONE: state = "Done"; break;
+        case P_KILLED: state = "Killed"; break;
+        case P_DETACHED: state = "Detached"; break;
+    }
+
+    fprintf(stderr, "[%d] %d\t%s\t%s\n", proc->jid, proc->pid, state, proc->line);
+}
+
+void job_notify_state(process_t *proc){
+
+  job_display_state(proc);
+  proc->notified_state = proc->current_state;
+
+  if (proc->current_state >= P_DONE){
+      job_untrack(proc);
+      free(proc);
+  }
+
+}
+
+
 void job_notify_state_changes(){
 
     for (int i=0; i < vector_length(&jsh.processes); ++i){
@@ -38,23 +67,8 @@ void job_notify_state_changes(){
         if (proc == NULL) continue;
         if (proc->current_state == proc->notified_state) continue;
 
-        char *state;
-        switch (proc->current_state) {
-            case P_NONE: state = "???"; break;
-            case P_RUNNING: state = "Running"; break;
-            case P_STOPPED: state = "Stopped"; break;
-            case P_DONE: state = "Done"; break;
-            case P_KILLED: state = "Killed"; break;
-            case P_DETACHED: state = "Detached"; break;
-        }
+        job_notify_state(proc);
 
-        fprintf(stderr, "[%d] %d\t%s\t%s\n", proc->jid, proc->pid, state, proc->line);
-        proc->notified_state = proc->current_state;
-
-        if (proc->current_state >= P_DONE){
-            job_untrack(proc);
-            free(proc);
-        }
     }
 }
 
