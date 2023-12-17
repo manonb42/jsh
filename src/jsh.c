@@ -27,47 +27,6 @@ void free_command(command_t *command)
     free(command);
 }
 
-void notify_job_state_changes(){
-
-    for (int i=0; i < vector_length(&jsh.processes); ++i){
-
-        process_t* proc = vector_at(&jsh.processes, i);
-        if (proc == NULL) continue;
-        if (proc->current_state == proc->notified_state) continue;
-
-        char *state;
-        switch (proc->current_state) {
-            case P_NONE: state = "???"; break;
-            case P_RUNNING: state = "Running"; break;
-            case P_STOPPED: state = "Stopped"; break;
-            case P_DONE: state = "Done"; break;
-            case P_KILLED: state = "Killed"; break;
-            case P_DETACHED: state = "Detached"; break;
-        }
-
-        fprintf(stderr, "[%d] %d\t%s\t%s\n", proc->jid, proc->pid, state, proc->line);
-        proc->notified_state = proc->current_state;
-
-        if (proc->current_state >= P_DONE){
-            job_untrack(proc);
-            free(proc);
-        }
-    }
-}
-
-void update_background_job_states(){
-    int pid, wstatus;
-    while ((pid = waitpid(-1, &wstatus, WNOHANG | WUNTRACED)) > 0){
-        for (int i=0; i<vector_length(&jsh.processes); ++i){
-            process_t* proc = vector_at(&jsh.processes, i);
-            if (proc == NULL) continue;
-            if (proc->pid != pid) continue;
-            if (WIFEXITED(wstatus)) proc->current_state = P_DONE;
-            if (WIFSIGNALED(wstatus)) proc->current_state = P_KILLED;
-            if (WIFSTOPPED(wstatus)) proc->current_state = P_STOPPED;
-        }
-    }
-}
 
 int main(){
 
@@ -78,8 +37,8 @@ int main(){
     {
         command_t *command;
         do {
-            update_background_job_states();
-            notify_job_state_changes();
+            job_update_background_states();
+            job_notify_state_changes();
             command = read_command();
         } while( command == NULL );
         exec_command(command);
