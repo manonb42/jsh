@@ -32,20 +32,26 @@ int exec_external(command_t *command)
     int pid = fork();
 
     if (pid == 0) {
+        setpgid(0,0);
         execvp(command->argv[0], command->argv);
         perror("jsh");
         exit(127);
     }
-    else if (!command->bg) {
+
+    setpgid(pid,0);
+
+    job_t *job = calloc(sizeof(job_t), 1);
+    *job = (job_t){ .pgid = pid, .current_state = P_RUNNING, .notified_state = P_NONE, .line = strdup(command->line)};
+    job_track(job);
+
+    if (!command->bg) {
         int status;
-        waitpid(pid, &status, 0);
-        return WEXITSTATUS(status);
-    } else {
-        job_t *job = calloc(sizeof(job_t), 1);
-        *job = (job_t){ .pgid = pid, .current_state = P_RUNNING, .notified_state = P_NONE, .line = strdup(command->line)};
-        job_track(job);
-        return 0;
+        waitpid(-pid, &status, WUNTRACED | WCONTINUED);
+        job_update_state(job, status);
+        if (job->current_state >= P_DONE) job->notified_state = job->current_state;
+        if (job->current_state == P_DONE) return WEXITSTATUS(status);
     }
+    return 0;
 
 }
 
