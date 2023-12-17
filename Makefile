@@ -10,7 +10,7 @@ OBJS:=$(patsubst src/%.c,build/%.o, $(SRC))
 
 build: build_dir $(EXEC)
 
-run : build
+run: build
 	./$(EXEC)
 
 $(EXEC): $(OBJS)
@@ -22,9 +22,11 @@ build_dir:
 build/%.o: src/%.c $(HEADERS)
 	$(CC) -c $(CFLAGS) $< -o $@
 
-clean :
+clean:
 	rm -rf build $(EXEC)
 
+test: build
+	./test.sh
 
-leak :
+leak:
 	valgrind --leak-check=full --show-leak-kinds=all ./$(EXEC) 
