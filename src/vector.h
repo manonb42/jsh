@@ -1,8 +1,8 @@
 #ifndef VECTOR_H_
 #define VECTOR_H_
 
-
-typedef struct vector {
+typedef struct vector
+{
   int len;
   int cap;
   void **data;
@@ -20,6 +20,5 @@ void vector_shrink(vector *v);
 void *vector_at(vector *v, int i);
 void *vector_set(vector *v, int i, void *element);
 void *vector_remove(vector *v, int i);
-
 
 #endif // VECTOR_H_

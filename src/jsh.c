@@ -10,14 +10,11 @@
 #include "exec.h"
 #include "jobs.h"
 
-#include <wait.h>
-
-
 jsh_t jsh = {0};
 
 void free_command(command_t *command)
 {
-    for (int i = 0; command->argv[i] != NULL; ++i)
+    for (int i = 0; command->argv[i]; ++i)
         free(command->argv[i]);
     free(command->stdin.path);
     free(command->stdout.path);
@@ -27,20 +24,20 @@ void free_command(command_t *command)
     free(command);
 }
 
-
-int main(){
-
+int main()
+{
     rl_initialize();
     rl_outstream = stderr;
 
     while (1)
     {
         command_t *command;
-        do {
+        do
+        {
             job_update_background_states();
             job_notify_state_changes();
             command = read_command();
-        } while( command == NULL );
+        } while (command == NULL);
         exec_command(command);
         free_command(command);
     }
