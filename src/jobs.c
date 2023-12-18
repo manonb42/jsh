@@ -31,7 +31,7 @@ void job_track(job_t *job){
 }
 
 
-void job_display_state(job_t *job){
+void job_display_state(job_t *job, FILE *output){
 
     char *state;
     switch (job->current_state) {
@@ -43,12 +43,12 @@ void job_display_state(job_t *job){
         case P_DETACHED: state = "Detached"; break;
     }
 
-    fprintf(stderr, "[%d] %d\t%s\t%s\n", job->jid, job->pgid, state, job->line);
+    fprintf(output, "[%d] %d\t%s\t%s\n", job->jid, job->pgid, state, job->line);
 }
 
 void job_notify_state(job_t *job){
 
-  job_display_state(job);
+  job_display_state(job,stdout);
   job->notified_state = job->current_state;
 
   if (job->current_state >= P_DONE){
@@ -69,7 +69,7 @@ void job_notify_state_changes(){
 
         // We only display changed states (unlike in `job_notify_state`)
         if (job->current_state != job->notified_state)
-          job_display_state(job);
+          job_display_state(job,stderr);
 
         job->notified_state = job->current_state;
         if (job->current_state >= P_DONE){
