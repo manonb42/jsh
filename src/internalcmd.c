@@ -4,10 +4,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <wait.h>
 
 #include "jobs.h"
 
-char *internals[] = {"pwd", "cd", "exit", "?", "kill", "jobs"};
+char *internals[] = {"pwd", "cd", "exit", "?", "kill", "jobs", "bg", "fg"};
 
 bool parse_number(char *s, int *out)
 {
@@ -116,6 +117,54 @@ int exec_jobs()
     return 0;
 }
 
+int exec_bg(command_t *command)
+{
+    if(command->argc != 2)
+        fprintf(stderr, "jsh: bg: bad argument\n");
+
+    job_t *job_to_bg = job_by_id(atoi((command->argv)[1] + 1));
+    printf("%d yeaah\n", job_to_bg->jid);
+
+    /*int pid = fork();
+    *job = (job_t){.pgid = pid, .current_state = P_RUNNING, .notified_state = P_NONE, .line = strdup(command->line)};
+    job_track(job);*/
+    return 0;
+}
+
+int exec_fg(command_t *command)
+{
+    if(command->argc != 2)
+        fprintf(stderr, "jsh: fg: bad argument\n");
+
+    job_t *job_to_fg = job_by_id(atoi((command->argv)[1] + 1));
+    int pid = job_to_fg->pgid;
+    int status;
+    waitpid(-pid, &status, WUNTRACED | WCONTINUED);
+    job_update_state(job_to_fg, status);
+    if (job_to_fg->current_state >= P_DONE)
+        job_to_fg->notified_state = job_to_fg->current_state;
+    if (job_to_fg->current_state == P_DONE)
+        return WEXITSTATUS(status);
+    /*
+    process_v ps = job_to_fg->processes;
+    //assuming each processus of the vector waits for the next one to finish
+    for(unsigned i = ps.len; i > 0; --i) {
+        puts("okay");
+        void *tmp = ps.data[i - 1];
+        struct process_t *process = (struct process_t *)tmp;
+        int pid = process->pid;
+        int status;
+        waitpid(-pid, &status, WUNTRACED | WCONTINUED);
+        job_update_state(job_to_fg, status);
+        if (job_to_fg->current_state >= P_DONE)
+            job_to_fg->notified_state = job_to_fg->current_state;
+        if (job_to_fg->current_state == P_DONE)
+            return WEXITSTATUS(status);
+    }
+    */
+    return 0;
+}
+
 int exec_kill(command_t *command)
 {
     if (command->argc < 2 || command->argc > 3)
@@ -181,5 +230,9 @@ int exec_internal(command_t *command)
         return exec_jobs(command);
     else if (!strcmp(cmd, "kill"))
         return exec_kill(command);
+    else if (!strcmp(cmd, "bg"))
+        return exec_bg(command);
+    else if (!strcmp(cmd, "fg"))
+        return exec_fg(command);
     return -1;
 }
