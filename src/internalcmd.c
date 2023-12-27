@@ -119,24 +119,42 @@ int exec_jobs()
 
 int exec_bg(command_t *command)
 {
-    if(command->argc != 2)
+    if(command->argc != 2 || (command->argv)[1][0] != '%'){
         fprintf(stderr, "jsh: bg: bad argument\n");
-
+        return 1;
+    }
     job_t *job_to_bg = job_by_id(atoi((command->argv)[1] + 1));
+    if(job_to_bg == NULL){
+        fprintf(stderr, "jsh: bg: bad argument\n");
+        return 1;
+    }
     printf("%d yeaah\n", job_to_bg->jid);
-
-    /*int pid = fork();
-    *job = (job_t){.pgid = pid, .current_state = P_RUNNING, .notified_state = P_NONE, .line = strdup(command->line)};
-    job_track(job);*/
+    if(!fork()) {
+        int pid = job_to_bg->pgid;
+        int status;
+        waitpid(-pid, &status, WUNTRACED | WCONTINUED);
+        job_update_state(job_to_bg, status);
+        if (job_to_bg->current_state >= P_DONE)
+            job_to_bg->notified_state = job_to_bg->current_state;
+        if (job_to_bg->current_state == P_DONE)
+            return WEXITSTATUS(status);
+    }
     return 0;
 }
 
 int exec_fg(command_t *command)
 {
-    if(command->argc != 2)
+    /*only works for commands that don't interact with stdin or stdout*/
+    if(command->argc != 2 || (command->argv)[1][0] != '%'){
         fprintf(stderr, "jsh: fg: bad argument\n");
+        return 1;
+    }
 
     job_t *job_to_fg = job_by_id(atoi((command->argv)[1] + 1));
+    if(job_to_fg == NULL) {
+        fprintf(stderr, "jsh: fg: bad argument\n");
+        return 1;
+    }
     int pid = job_to_fg->pgid;
     int status;
     waitpid(-pid, &status, WUNTRACED | WCONTINUED);
