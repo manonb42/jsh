@@ -32,7 +32,7 @@ int main()
 
     struct sigaction ignore = {0};
     ignore.sa_handler = SIG_IGN;
-    int sig_to_ignore[] = {SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU}; // SIGINT
+    int sig_to_ignore[] = {SIGINT, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU};
     for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
         sigaction(sig_to_ignore[i], &ignore, NULL);
 

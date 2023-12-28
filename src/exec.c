@@ -128,7 +128,7 @@ void exec_command(command_t *command)
         ignore.sa_handler = SIG_IGN;
         def.sa_handler = SIG_DFL;
 
-        int sig_to_ignore[] = {SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU}; // SIGINT
+        int sig_to_ignore[] = {SIGINT, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU};
         for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
             sigaction(sig_to_ignore[i], &def, NULL);
 
