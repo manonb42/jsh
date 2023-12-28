@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <signal.h>
 
 #include "internalcmd.h"
 #include "jobs.h"
@@ -122,8 +123,20 @@ void exec_command(command_t *command)
         jsh.last_exit_code = exec_internal(command);
     }
     else
+    {
+        struct sigaction ignore = {0}, def = {0};
+        ignore.sa_handler = SIG_IGN;
+        def.sa_handler = SIG_DFL;
+
+        int sig_to_ignore[] = {SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU}; // SIGINT
+        for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
+            sigaction(sig_to_ignore[i], &def, NULL);
+
         jsh.last_exit_code = exec_external(command);
 
+        for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
+            sigaction(sig_to_ignore[i], &ignore, NULL);
+    }
     dup2(original_stdin, STDIN_FILENO);
     dup2(original_stdout, STDOUT_FILENO);
     dup2(original_stderr, STDERR_FILENO);

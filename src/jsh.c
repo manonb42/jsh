@@ -5,6 +5,7 @@
 #include <readline/history.h>
 #include <stdbool.h>
 #include <wait.h>
+#include <signal.h>
 
 #include "input.h"
 #include "exec.h"
@@ -28,6 +29,12 @@ int main()
 {
     rl_initialize();
     rl_outstream = stderr;
+
+    struct sigaction ignore = {0};
+    ignore.sa_handler = SIG_IGN;
+    int sig_to_ignore[] = {SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU}; // SIGINT
+    for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
+        sigaction(sig_to_ignore[i], &ignore, NULL);
 
     while (1)
     {
