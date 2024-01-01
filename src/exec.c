@@ -42,10 +42,10 @@ int get_fd(command_redir_t redir)
     }
 }
 
-void put_process_in_foreground(pid_t pid_grp) {
-    struct sigaction action;
-	memset(&action, 0, sizeof(struct sigaction));
-	action.sa_handler = SIG_IGN;
+void put_process_in_foreground(pid_t pid_grp)
+{
+    struct sigaction action = {0};
+    action.sa_handler = SIG_IGN;
     sigaction(SIGTTOU, &action, NULL);
     tcsetpgrp(STDOUT_FILENO, pid_grp);
     tcsetpgrp(STDIN_FILENO, pid_grp);
@@ -59,7 +59,7 @@ int exec_external(command_t *command)
     {
         setpgid(0, 0);
         int pid_grp = getpgrp();
-        if(!command->bg)
+        if (!command->bg)
             put_process_in_foreground(pid_grp);
         execvp(command->argv[0], command->argv);
         perror("jsh");
