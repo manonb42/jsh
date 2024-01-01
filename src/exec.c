@@ -42,6 +42,15 @@ int get_fd(command_redir_t redir)
     }
 }
 
+void put_process_in_foreground(pid_t pid_grp) {
+    struct sigaction action;
+	memset(&action, 0, sizeof(struct sigaction));
+	action.sa_handler = SIG_IGN;
+    sigaction(SIGTTOU, &action, NULL);
+    tcsetpgrp(STDOUT_FILENO, pid_grp);
+    tcsetpgrp(STDIN_FILENO, pid_grp);
+}
+
 int exec_external(command_t *command)
 {
     int pid = fork();
@@ -49,6 +58,9 @@ int exec_external(command_t *command)
     if (!pid)
     {
         setpgid(0, 0);
+        int pid_grp = getpgrp();
+        if(!command->bg)
+            put_process_in_foreground(pid_grp);
         execvp(command->argv[0], command->argv);
         perror("jsh");
         exit(127);
@@ -64,6 +76,7 @@ int exec_external(command_t *command)
     {
         int status;
         waitpid(-pid, &status, WUNTRACED | WCONTINUED);
+        put_process_in_foreground(getpgrp());
         job_update_state(job, status);
         if (job->current_state >= P_DONE)
             job->notified_state = job->current_state;
