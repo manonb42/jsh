@@ -62,6 +62,7 @@ int exec_external(command_t *command)
         if(!command->bg)
             put_process_in_foreground(pid_grp);
         execvp(command->argv[0], command->argv);
+        puts("yihaaaaaaaaaaaa");
         perror("jsh");
         exit(127);
     }

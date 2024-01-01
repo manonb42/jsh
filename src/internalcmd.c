@@ -128,12 +128,16 @@ int exec_bg(command_t *command)
         fprintf(stderr, "jsh: bg: bad argument\n");
         return 1;
     }
-    printf("%d yeaah\n", job_to_bg->jid);
-    if(!fork()) {
+    job_to_bg->current_state = P_RUNNING;
+    //job_display_state(job_to_bg,stderr);
+    int new_pid;
+    if(!(new_pid = fork())) {
         int pid = job_to_bg->pgid;
+        setpgid(pid, new_pid);
         int status;
         waitpid(-pid, &status, WUNTRACED | WCONTINUED);
         job_update_state(job_to_bg, status);
+        job_display_state(job_to_bg,stderr);
         if (job_to_bg->current_state >= P_DONE)
             job_to_bg->notified_state = job_to_bg->current_state;
         if (job_to_bg->current_state == P_DONE)
