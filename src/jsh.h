@@ -56,6 +56,7 @@ typedef struct vector process_v;
 
 typedef struct job_t
 {
+  int running_fg;
   int jid;
   int pgid;
 

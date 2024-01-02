@@ -7,6 +7,7 @@
 #include <wait.h>
 
 #include "jobs.h"
+#include "exec.h"
 
 char *internals[] = {"pwd", "cd", "exit", "?", "kill", "jobs", "bg", "fg"};
 
@@ -119,6 +120,7 @@ int exec_jobs()
 
 int exec_bg(command_t *command)
 {
+    sleep(1);//ugly but timing issues without it
     if(command->argc != 2 || (command->argv)[1][0] != '%'){
         fprintf(stderr, "jsh: bg: bad argument\n");
         return 1;
@@ -129,13 +131,11 @@ int exec_bg(command_t *command)
         return 1;
     }
     kill(job_to_bg->pgid, SIGCONT);
-    //setpgid(0, 0);
     return 0;
 }
 
 int exec_fg(command_t *command)
 {
-    /*only works for commands that don't interact with stdin or stdout*/
     if(command->argc != 2 || (command->argv)[1][0] != '%'){
         fprintf(stderr, "jsh: fg: bad argument\n");
         return 1;
@@ -146,31 +146,20 @@ int exec_fg(command_t *command)
         fprintf(stderr, "jsh: fg: bad argument\n");
         return 1;
     }
+    job_to_fg->running_fg = 1;
+    put_process_in_foreground(job_to_fg->pgid);
+    kill(job_to_fg->pgid, SIGCONT);
+    sleep(1);//ugly again but timing issues without it
     int pid = job_to_fg->pgid;
     int status;
     waitpid(-pid, &status, WUNTRACED | WCONTINUED);
+    put_process_in_foreground(getpgrp());
     job_update_state(job_to_fg, status);
     if (job_to_fg->current_state >= P_DONE)
         job_to_fg->notified_state = job_to_fg->current_state;
     if (job_to_fg->current_state == P_DONE)
         return WEXITSTATUS(status);
-    /*
-    process_v ps = job_to_fg->processes;
-    //assuming each processus of the vector waits for the next one to finish
-    for(unsigned i = ps.len; i > 0; --i) {
-        puts("okay");
-        void *tmp = ps.data[i - 1];
-        struct process_t *process = (struct process_t *)tmp;
-        int pid = process->pid;
-        int status;
-        waitpid(-pid, &status, WUNTRACED | WCONTINUED);
-        job_update_state(job_to_fg, status);
-        if (job_to_fg->current_state >= P_DONE)
-            job_to_fg->notified_state = job_to_fg->current_state;
-        if (job_to_fg->current_state == P_DONE)
-            return WEXITSTATUS(status);
-    }
-    */
+    job_display_state(job_to_fg,stderr);
     return 0;
 }
 

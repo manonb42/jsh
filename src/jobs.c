@@ -61,8 +61,9 @@ void job_display_state(job_t *job, FILE *output)
     state = "Detached";
     break;
   }
-
-  fprintf(output, "[%d] %d\t%s\t%s\n", job->jid, job->pgid, state, job->line);
+  if(!job->running_fg || ((job->current_state != P_RUNNING) && (job->current_state != P_DONE))) {
+    fprintf(output, "[%d] %d\t%s\t%s\n", job->jid, job->pgid, state, job->line);
+  }
 }
 
 void job_notify_state(job_t *job)
