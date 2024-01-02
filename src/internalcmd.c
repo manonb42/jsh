@@ -120,7 +120,6 @@ int exec_jobs()
 
 int exec_bg(command_t *command)
 {
-    sleep(1);//ugly but timing issues without it
     if(command->argc != 2 || (command->argv)[1][0] != '%'){
         fprintf(stderr, "jsh: bg: bad argument\n");
         return 1;
@@ -149,9 +148,9 @@ int exec_fg(command_t *command)
     job_to_fg->running_fg = 1;
     put_process_in_foreground(job_to_fg->pgid);
     kill(job_to_fg->pgid, SIGCONT);
-    sleep(1);//ugly again but timing issues without it
     int pid = job_to_fg->pgid;
     int status;
+    sleep(1);
     waitpid(-pid, &status, WUNTRACED | WCONTINUED);
     put_process_in_foreground(getpgrp());
     job_update_state(job_to_fg, status);
