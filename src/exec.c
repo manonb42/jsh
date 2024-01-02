@@ -44,11 +44,25 @@ int get_fd(command_redir_t redir)
 
 void put_process_in_foreground(pid_t pid_grp)
 {
-    struct sigaction action = {0};
-    action.sa_handler = SIG_IGN;
-    sigaction(SIGTTOU, &action, NULL);
+    // struct sigaction action = {0};
+    // action.sa_handler = SIG_IGN;
+    // sigaction(SIGTTOU, &action, NULL);
+    // tcsetpgrp(STDOUT_FILENO, pid_grp);
+    // tcsetpgrp(STDIN_FILENO, pid_grp);
+    // Initialisation
+    sigset_t s_courant, s_bloque;
+    sigemptyset(&s_bloque);
+    sigaddset(&s_bloque, SIGTTOU);
+
+    // Bloquage de SIGTTOU
+    sigprocmask(SIG_SETMASK, &s_bloque, &s_courant);
+
+    // Section Critique
     tcsetpgrp(STDOUT_FILENO, pid_grp);
     tcsetpgrp(STDIN_FILENO, pid_grp);
+
+    // Débloquage de SIGTTOU
+    sigprocmask(SIG_SETMASK, &s_courant, NULL);
 }
 
 int exec_external(command_t *command)
@@ -59,6 +73,22 @@ int exec_external(command_t *command)
     {
         setpgid(0, 0);
         int pid_grp = getpgrp();
+
+        // // Initialisation
+        // sigset_t s_courant, s_bloque;
+        // sigemptyset(&s_bloque);
+        // sigaddset(&s_bloque, SIGTTOU);
+
+        // // Bloquage de SIGTTOU
+        // sigprocmask(SIG_SETMASK, &s_bloque, &s_courant);
+
+        // // Section Critique
+        // tcsetpgrp(STDOUT_FILENO, pid_grp);
+        // tcsetpgrp(STDIN_FILENO, pid_grp);
+
+        // // Débloquage de SIGTTOU
+        // sigprocmask(SIG_SETMASK, &s_courant, NULL);
+
         if (!command->bg)
             put_process_in_foreground(pid_grp);
         execvp(command->argv[0], command->argv);
