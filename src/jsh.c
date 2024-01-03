@@ -30,9 +30,12 @@ int main()
     rl_initialize();
     rl_outstream = stderr;
 
+    // Initializing signals handler
     struct sigaction ignore = {0};
     ignore.sa_handler = SIG_IGN;
     int sig_to_ignore[] = {SIGINT, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU};
+
+    // Ignore signals
     for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
         sigaction(sig_to_ignore[i], &ignore, NULL);
 
@@ -41,6 +44,7 @@ int main()
         command_t *command;
         do
         {
+            // Update status of all processes of each job
             job_update_background_states();
             job_notify_state_changes();
             command = read_command();

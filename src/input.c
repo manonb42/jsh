@@ -58,23 +58,46 @@ command_t *parse_command(char *read)
 
     for (int i = 0; parts[i] != NULL; ++i)
     {
-        if (!strcmp(parts[i], "&") && !parts[i + 1])
+        char *arg = parts[i];
+        char *next_arg = parts[i + 1];
+
+        // Managing '&'
+        if (!strcmp(parts[i], "&"))
         {
-            line[strlen(line) - 2] = '\0';
-            out->bg = true;
-            continue;
+            if (next_arg)
+            {
+                fprintf(stderr, "jsh: Syntax error : invalid usage of '%s'\n", arg);
+                jsh.last_exit_code = 1;
+                return NULL;
+            }
+            else
+            {
+                line[strlen(line) - 2] = '\0';
+                out->bg = true;
+                continue;
+            }
         }
 
+        // Managing redirections
         bool redir = false;
         for (int j = 0; j < sizeof(symbols) / sizeof(char *); ++j)
         {
-            if (!strcmp(parts[i], symbols[j]) && parts[i + 1])
+            if (!strcmp(parts[i], symbols[j]))
             {
-                target[j]->type = flags[j];
-                target[j]->path = strdup(parts[i + 1]);
-                i += 1;
-                redir = true;
-                break;
+                if (!parts[i + 1])
+                {
+                    fprintf(stderr, "jsh: Syntax error : invalid usage of '%s'\n", arg);
+                    jsh.last_exit_code = 1;
+                    return NULL;
+                }
+                else
+                {
+                    target[j]->type = flags[j];
+                    target[j]->path = strdup(parts[i + 1]);
+                    i += 1;
+                    redir = true;
+                    break;
+                }
             }
         }
 
@@ -107,9 +130,9 @@ command_t *read_command()
     long int nbjobs = job_count();
     unsigned int nbcj = nb_chiffres(nbjobs);
 
-    // Formatted prompt
+    // Formatting prompt
     char prompt[30];
-    unsigned int lenprompt = 4 + nbcj; // 4 for "[]$ " & nbcj for nbjobs
+    unsigned int lenprompt = 4 + nbcj; // 4 for "[]$␣" & nbcj for nbjobs
     if (strlen(curdir) + lenprompt > 30)
         sprintf(prompt, "%s[%ld]%s...%s%s$ ", cyan, nbjobs, vert, (curdir + (strlen(curdir) - 30 + lenprompt + 3)), normal);
     else

@@ -44,19 +44,18 @@ int get_fd(command_redir_t redir)
 
 void put_process_in_foreground(pid_t pid_grp)
 {
-    // Initialisation
+    // Initializing the mask
     sigset_t s_courant, s_bloque;
     sigemptyset(&s_bloque);
     sigaddset(&s_bloque, SIGTTOU);
 
-    // Bloquage de SIGTTOU
+    // Blocking SIGTTOU
     sigprocmask(SIG_SETMASK, &s_bloque, &s_courant);
 
-    // Section Critique
-    tcsetpgrp(STDOUT_FILENO, pid_grp);
+    // Critical section
     tcsetpgrp(STDIN_FILENO, pid_grp);
 
-    // Débloquage de SIGTTOU
+    // Unblocking SIGTTOU
     sigprocmask(SIG_SETMASK, &s_courant, NULL);
 }
 
@@ -64,28 +63,40 @@ int exec_external(command_t *command)
 {
     int pid = fork();
 
+    if (pid < 0)
+    {
+        perror("jsh");
+        exit(2);
+    }
+
     if (!pid)
     {
+        // Process group created for pid
         setpgid(0, 0);
-
+        // Put this process group in foreground
         if (!command->bg)
             put_process_in_foreground(getpgrp());
+
         execvp(command->argv[0], command->argv);
         perror("jsh");
         exit(127);
     }
 
+    // Shell process group
     setpgid(pid, 0);
-
     job_t *job = calloc(sizeof(job_t), 1);
     *job = (job_t){.pgid = pid, .current_state = P_RUNNING, .notified_state = P_NONE, .line = strdup(command->line)};
     job_track(job);
 
+    // If cmd is in background
     if (!command->bg)
     {
+        // Blocking until the command is completed
         int status;
         waitpid(-pid, &status, WUNTRACED | WCONTINUED);
+        // Put the process group of the shell in foreground
         put_process_in_foreground(getpgrp());
+        // Update status of all processes in the job
         job_update_state(job, status);
         if (job->current_state >= P_DONE)
             job->notified_state = job->current_state;
@@ -101,6 +112,7 @@ void exec_command(command_t *command)
     int original_stdout = dup(STDOUT_FILENO);
     int original_stderr = dup(STDERR_FILENO);
 
+    // Managing input/output
     if (command->stdin.type != R_NONE)
     {
         int fd = get_fd(command->stdin);
@@ -139,6 +151,7 @@ void exec_command(command_t *command)
 
     char *cmd = command->argv[0];
 
+    // Running command
     if (is_internal(cmd))
     {
         command->bg = false;
@@ -146,19 +159,24 @@ void exec_command(command_t *command)
     }
     else
     {
+        // Initializing signals handler
         struct sigaction ignore = {0}, def = {0};
         ignore.sa_handler = SIG_IGN;
         def.sa_handler = SIG_DFL;
-
         int sig_to_ignore[] = {SIGINT, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU};
+
+        //  Default action
         for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
             sigaction(sig_to_ignore[i], &def, NULL);
 
         jsh.last_exit_code = exec_external(command);
 
+        // Ignore signals
         for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
             sigaction(sig_to_ignore[i], &ignore, NULL);
     }
+
+    // Default input/output
     dup2(original_stdin, STDIN_FILENO);
     dup2(original_stdout, STDOUT_FILENO);
     dup2(original_stderr, STDERR_FILENO);
