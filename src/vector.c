@@ -82,3 +82,8 @@ void *vector_remove(vector *v, int i)
   memmove(&v[i], &v[i + 1], sizeof(void *) * (--v->len - i));
   return out;
 }
+
+void vector_free(vector v)
+{
+  free(v.data);
+}
