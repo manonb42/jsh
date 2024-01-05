@@ -37,6 +37,17 @@ typedef struct command_t
 } command_t;
 
 void free_command(command_t *command);
+typedef struct vector command_v;
+
+typedef struct pipeline_t
+{
+  bool background;
+  command_v commands;
+  char *line;
+} pipeline_t;
+
+void free_pipeline(pipeline_t *pipeline);
+
 
 typedef enum process_state_t
 {

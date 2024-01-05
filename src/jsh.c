@@ -43,6 +43,15 @@ void free_command(command_t *command)
     free(command);
 }
 
+void free_pipeline(pipeline_t *pipeline)
+{
+    for (int i=0; i<vector_length(&pipeline->commands); ++i)
+        free_command(vector_at(&pipeline->commands, i));
+    vector_free(pipeline->commands);
+    free(pipeline->line);
+    free(pipeline);
+}
+
 int main()
 {
     rl_initialize();
