@@ -79,7 +79,10 @@ int exec_cd(char *path)
 int exec_exit(int code, command_t *command)
 {
     if (job_count() > 0)
+    {
+        fprintf(stderr, "jsh: exit: there are running or stopped jobs\n");
         return 1;
+    }
 
     if (command->argc > 1 && !parse_number(command->argv[1], &code))
     {
