@@ -156,13 +156,15 @@ pipeline_t *parse_pipeline(char *line)
     {
         while (end < partc && strcmp(parts[end], "|") != 0)
             ++end;
-        if (end < partc && !strcmp(parts[end], "|") && end - start < 1) {
+        if (end < partc && !strcmp(parts[end], "|") && end - start < 1)
+        {
             fprintf(stderr, "jsh: Syntax error : invalid usage of '|'\n");
             jsh.last_exit_code = 1;
             return NULL;
         }
-        command_t * cmd = parse_command(end - start, &parts[start]);
-        if(!cmd) {
+        command_t *cmd = parse_command(end - start, &parts[start]);
+        if (!cmd)
+        {
             return NULL;
         }
         vector_append(&out->commands, cmd);

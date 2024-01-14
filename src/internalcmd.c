@@ -236,7 +236,7 @@ int exec_fg(command_t *command)
     put_process_in_foreground(job_to_fg->pgid);
     kill(job_to_fg->pgid, SIGCONT);
     int status;
-    //sleep(1);
+    // sleep(1);
     int pid = waitpid(-job_to_fg->pgid, &status, WUNTRACED | WCONTINUED);
     put_process_in_foreground(getpgrp());
     process_update_state(pid, status);
