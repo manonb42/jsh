@@ -54,21 +54,29 @@ void put_process_in_foreground(pid_t pid_grp)
 
 void job_foreground(job_t *job){
     job_update_state(job);
-    if (job->current_state >= P_DONE){
-        process_t *process = vector_at(&job->processes, 0);
-        job->notified_state = job->current_state;
-        jsh.last_exit_code = process->exit_code;
-        return;
+
+    if (job->current_state == P_DONE){
+         process_t *process = vector_at(&job->processes, 0);
+         job->notified_state = job->current_state;
+         jsh.last_exit_code = process->exit_code;
+         return;
     }
 
-    put_process_in_foreground(job->pgid);
-    int status;
-    int pid = waitpid(-job->pgid, &status, WUNTRACED | WCONTINUED);
-    process_update_state(pid, status);
+     put_process_in_foreground(job->pgid);
+     int status;
+     while (job->current_state == P_RUNNING){
+        int pid = waitpid(-job->pgid, &status, WUNTRACED | WCONTINUED);
+        process_update_state(pid, status);
+     }
+
     if (job->current_state >= P_DONE)
         job->notified_state = job->current_state;
-    if (job->current_state == P_DONE)
-        jsh.last_exit_code = WEXITSTATUS(status);
+    if (job->current_state == P_DONE){
+        job->notified_state = job->current_state;
+        process_t *process = vector_at(&job->processes, vector_length(&job->processes)-1);
+        jsh.last_exit_code = process->exit_code;
+    }
+
     put_process_in_foreground(getpgrp());
 }
 
@@ -133,8 +141,10 @@ void exec_pipeline(pipeline_t *pipeline){
         .notified_state = P_NONE,
         .line = strdup(pipeline->line)};
 
-    command_t *command = vector_at(&pipeline->commands, 0);
-    exec_command(command, job);
+    for (int i=0; i<vector_length(&pipeline->commands); ++i){
+        command_t *command = vector_at(&pipeline->commands, i);
+        exec_command(command, job);
+    }
 
     job_track(job);
     if (!pipeline->background) job_foreground(job);
