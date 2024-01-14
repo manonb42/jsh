@@ -52,6 +52,21 @@ void free_pipeline(pipeline_t *pipeline)
     free(pipeline);
 }
 
+void free_process(process_t *process) {
+    free(process->line);
+    free(process);
+}
+
+void free_job(job_t *job)
+{
+    for (int i=0; i<vector_length(&job->processes); ++i)
+        free_process(vector_at(&job->processes, i));
+    vector_free(job->processes);
+    free(job->line);
+    free(job);
+}
+
+
 int main()
 {
     rl_initialize();

@@ -67,6 +67,7 @@ typedef struct process_t
   char *line;
 } process_t;
 
+void free_process(process_t *process);
 typedef struct vector process_v;
 
 typedef struct job_t
@@ -82,7 +83,9 @@ typedef struct job_t
   char *line;
 } job_t;
 
+void free_job(job_t *job);
 typedef struct vector job_v;
+
 
 typedef struct jsh_t
 {
