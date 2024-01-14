@@ -4,10 +4,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <wait.h>
 
 #include "jobs.h"
+#include "exec.h"
 
-char *internals[] = {"pwd", "cd", "exit", "?", "kill", "jobs"};
+char *internals[] = {"pwd", "cd", "exit", "?", "kill", "jobs", "bg", "fg"};
 
 bool parse_number(char *s, int *out)
 {
@@ -119,6 +121,50 @@ int exec_jobs()
     return 0;
 }
 
+int exec_bg(command_t *command)
+{
+    if(command->argc != 2 || (command->argv)[1][0] != '%'){
+        fprintf(stderr, "jsh: bg: bad argument\n");
+        return 1;
+    }
+    job_t *job_to_bg = job_by_id(atoi((command->argv)[1] + 1));
+    if(job_to_bg == NULL){
+        fprintf(stderr, "jsh: bg: bad argument\n");
+        return 1;
+    }
+    kill(job_to_bg->pgid, SIGCONT);
+    return 0;
+}
+
+int exec_fg(command_t *command)
+{
+    if(command->argc != 2 || (command->argv)[1][0] != '%'){
+        fprintf(stderr, "jsh: fg: bad argument\n");
+        return 1;
+    }
+
+    job_t *job_to_fg = job_by_id(atoi((command->argv)[1] + 1));
+    if(job_to_fg == NULL) {
+        fprintf(stderr, "jsh: fg: bad argument\n");
+        return 1;
+    }
+    job_to_fg->running_fg = 1;
+    put_process_in_foreground(job_to_fg->pgid);
+    kill(job_to_fg->pgid, SIGCONT);
+    int pid = job_to_fg->pgid;
+    int status;
+    sleep(1);
+    waitpid(-pid, &status, WUNTRACED | WCONTINUED);
+    put_process_in_foreground(getpgrp());
+    job_update_state(job_to_fg, status);
+    if (job_to_fg->current_state >= P_DONE)
+        job_to_fg->notified_state = job_to_fg->current_state;
+    if (job_to_fg->current_state == P_DONE)
+        return WEXITSTATUS(status);
+    job_display_state(job_to_fg,stderr);
+    return 0;
+}
+
 int exec_kill(command_t *command)
 {
     if (command->argc < 2 || command->argc > 3)
@@ -184,5 +230,9 @@ int exec_internal(command_t *command)
         return exec_jobs(command);
     else if (!strcmp(cmd, "kill"))
         return exec_kill(command);
+    else if (!strcmp(cmd, "bg"))
+        return exec_bg(command);
+    else if (!strcmp(cmd, "fg"))
+        return exec_fg(command);
     return -1;
 }
