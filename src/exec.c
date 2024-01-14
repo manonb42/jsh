@@ -30,6 +30,7 @@ void register_process(job_t *job, command_t *command, int pid, process_state_t s
     vector_append(&job->processes, process);
 }
 
+<<<<<<< HEAD
 int setup_redir_fd(command_redir_t *redir, int default_fd)
 {
     int fd;
@@ -61,6 +62,19 @@ int setup_redir_fd(command_redir_t *redir, int default_fd)
         perror("jsh");
         return -1;
     }
+=======
+int setup_redir_fd(command_redir_t *redir){
+  int fd;
+  switch (redir->type) {
+    case R_NONE: fd = redir->fd; break;
+    case R_INPUT: fd = open(redir->path, O_RDONLY | O_CLOEXEC); break;
+    case R_NO_CLOBBER: fd = open(redir->path, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC | O_CLOEXEC, 0664); break;
+    case R_CLOBBER: fd = open(redir->path, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0664); break;
+    case R_APPEND: fd = open(redir->path, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0664); break;
+  }
+  if (fd >= 0) { redir->fd = fd; return 0;}
+  else { perror("jsh"); return -1; }
+>>>>>>> ae93faf (misc: set default redir fd in input)
 }
 
 void put_process_in_foreground(pid_t pid_grp)
@@ -153,10 +167,20 @@ void exec_command(command_t *command, job_t *job)
 {
     char *cmd = command->argv[0];
 
-    if (is_internal(cmd))
-        exec_internal(command, job);
-    else
-        exec_external(command, job);
+    if (setup_redir_fd(&command->stdin) != 0){
+        register_process(job, command, 0, P_DONE, 1); return; }
+    if (setup_redir_fd(&command->stdout) != 0){
+        register_process(job, command, 0, P_DONE, 1); return; }
+    if (setup_redir_fd(&command->stderr) != 0){
+        register_process(job, command, 0, P_DONE, 1); return; }
+
+
+    if (is_internal(cmd)) exec_internal(command, job);
+    else  exec_external(command, job);
+
+    if (command->stdin.fd  != STDIN_FILENO)  close(command->stdin.fd);
+    if (command->stdout.fd != STDOUT_FILENO) close(command->stdout.fd);
+    if (command->stderr.fd != STDERR_FILENO) close(command->stderr.fd);
 }
 
 void exec_pipeline(pipeline_t *pipeline)
@@ -175,21 +199,6 @@ void exec_pipeline(pipeline_t *pipeline)
 
         command_t *command = vector_at(&pipeline->commands, i);
 
-        if (setup_redir_fd(&command->stdin, STDIN_FILENO) != 0)
-        {
-            register_process(job, command, 0, P_DONE, 1);
-            continue;
-        }
-        if (setup_redir_fd(&command->stdout, STDOUT_FILENO) != 0)
-        {
-            register_process(job, command, 0, P_DONE, 1);
-            continue;
-        }
-        if (setup_redir_fd(&command->stderr, STDERR_FILENO) != 0)
-        {
-            register_process(job, command, 0, P_DONE, 1);
-            continue;
-        }
 
         if (pipe_fds[0] != -1)
             command->stdin.fd = pipe_fds[0];
@@ -204,12 +213,6 @@ void exec_pipeline(pipeline_t *pipeline)
 
         exec_command(command, job);
 
-        if (command->stdin.fd != STDIN_FILENO)
-            close(command->stdin.fd);
-        if (command->stdout.fd != STDOUT_FILENO)
-            close(command->stdout.fd);
-        if (command->stderr.fd != STDERR_FILENO)
-            close(command->stderr.fd);
     }
 
     job_track(job);

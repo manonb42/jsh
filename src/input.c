@@ -77,6 +77,9 @@ command_t *parse_command(int partc, char **parts)
     char *symbols[] = {"<", ">", ">|", ">>", "2>", "2>|", "2>>"};
     command_redir_type_t flags[] = {R_INPUT, R_NO_CLOBBER, R_CLOBBER, R_APPEND, R_NO_CLOBBER, R_CLOBBER, R_APPEND};
     command_redir_t *target[] = {&out->stdin, &out->stdout, &out->stdout, &out->stdout, &out->stderr, &out->stderr, &out->stderr};
+    out->stdin.fd = 0;
+    out->stdout.fd = 1;
+    out->stderr.fd = 2;
 
     for (int i = 0; i < partc; ++i)
     {
