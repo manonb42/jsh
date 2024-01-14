@@ -20,8 +20,8 @@ void register_process(job_t *job, command_t *command, int pid, process_state_t s
                             .exit_code = exit,
                             .line = strdup(command->line)};
     vector_append(&job->processes, process);
-
 }
+
 int setup_redir_fd(command_redir_t *redir, int default_fd){
   int fd;
   switch (redir->type) {
@@ -53,10 +53,9 @@ void put_process_in_foreground(pid_t pid_grp)
 }
 
 void job_foreground(job_t *job){
-    //FIXME: this assumes there is exactly one process
-    process_t *process = vector_at(&job->processes, 0);
-    if (process->state == P_DONE){
-        job->current_state = P_DONE;
+    job_update_state(job);
+    if (job->current_state >= P_DONE){
+        process_t *process = vector_at(&job->processes, 0);
         job->notified_state = job->current_state;
         jsh.last_exit_code = process->exit_code;
         return;
@@ -64,8 +63,8 @@ void job_foreground(job_t *job){
 
     put_process_in_foreground(job->pgid);
     int status;
-    waitpid(-job->pgid, &status, WUNTRACED | WCONTINUED);
-    job_update_state(job, status);
+    int pid = waitpid(-job->pgid, &status, WUNTRACED | WCONTINUED);
+    process_update_state(pid, status);
     if (job->current_state >= P_DONE)
         job->notified_state = job->current_state;
     if (job->current_state == P_DONE)
@@ -139,5 +138,4 @@ void exec_pipeline(pipeline_t *pipeline){
 
     job_track(job);
     if (!pipeline->background) job_foreground(job);
-
 }

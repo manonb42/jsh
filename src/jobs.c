@@ -109,32 +109,78 @@ void job_notify_state_changes()
   }
 }
 
-void job_update_state(job_t *job, int wstatus)
-{
-  if (WIFEXITED(wstatus))
-    job->current_state = P_DONE;
-  if (WIFSIGNALED(wstatus))
-    job->current_state = P_KILLED;
-  if (WIFSTOPPED(wstatus))
-    job->current_state = P_STOPPED;
-  if (WIFCONTINUED(wstatus))
-    job->current_state = P_RUNNING;
+bool pgrp_alive(int pgid){
+  return kill(-pgid, 0) == 0;
 }
+
+void job_update_state(job_t *job){
+  bool running = false;
+  bool stopped = false;
+  bool killed = false;
+  bool done = true;
+  bool completed = true;
+
+  for (int i=0; i<vector_length(&job->processes); ++i){
+      process_t *process = vector_at(&job->processes, i);
+      completed &= process->state >= P_DONE;
+      done &= process->state == P_DONE;
+      killed |= process->state == P_KILLED;
+      stopped |= process->state == P_STOPPED;
+      running |= process->state == P_RUNNING;
+  }
+  if (completed && job->pgid != 0 && pgrp_alive(job->pgid))
+    job->current_state = P_DETACHED;
+  if (done) job->current_state = P_DONE;
+  if (completed && killed) job->current_state = P_KILLED;
+  if (!running && stopped) job->current_state = P_STOPPED;
+  if (running) job->current_state = P_RUNNING;
+}
+
+int process_find_by_pid(int pid, job_t **job, process_t **process){
+  for (int i = 0; i < vector_length(&jsh.jobs); ++i) {
+      job_t *j = vector_at(&jsh.jobs, i);
+      if (j==NULL) continue;
+      for (int i = 0; i < vector_length(&j->processes); ++i) {
+        process_t *p = vector_at(&j->processes, i);
+        if (p->pid != pid) continue;
+        *process = p;
+        *job = j;
+        return 0;
+      }
+  }
+  return 1;
+}
+
+void process_update_state(int pid, int wstatus){
+  job_t *job;
+  process_t *process;
+
+  if (process_find_by_pid(pid, &job, &process)) {
+    printf("pid %d not found among %d jobs", pid, job_count());
+    exit(1);
+  }
+
+  if (WIFEXITED(wstatus)){
+    process->state = P_DONE;
+    process->exit_code = WEXITSTATUS(wstatus);
+  }
+  if (WIFSIGNALED(wstatus)){
+    process->state = P_KILLED;
+    process->exit_code = 128 + WTERMSIG(wstatus);
+  }
+  if (WIFSTOPPED(wstatus))
+    process->state = P_STOPPED;
+  if (WIFCONTINUED(wstatus))
+    process->state = P_RUNNING;
+
+  job_update_state(job);
+}
+
 
 void job_update_background_states()
 {
   int pid, wstatus;
-  while ((pid = waitpid(-1, &wstatus, WNOHANG | WUNTRACED | WCONTINUED)) > 0)
-  {
-    for (int i = 0; i < vector_length(&jsh.jobs); ++i)
-    {
-      job_t *job = vector_at(&jsh.jobs, i);
-      if (!job)
-        continue;
-      if (job->pgid != pid)
-        continue;
-      job_update_state(job, wstatus);
-    }
+  while ((pid = waitpid(-1, &wstatus, WNOHANG | WUNTRACED | WCONTINUED)) > 0){
+      process_update_state(pid, wstatus);
   }
 }
-

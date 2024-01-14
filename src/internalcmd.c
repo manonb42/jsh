@@ -178,12 +178,11 @@ int exec_fg(command_t *command)
     job_to_fg->running_fg = 1;
     put_process_in_foreground(job_to_fg->pgid);
     kill(job_to_fg->pgid, SIGCONT);
-    int pid = job_to_fg->pgid;
     int status;
     sleep(1);
-    waitpid(-pid, &status, WUNTRACED | WCONTINUED);
+    int pid = waitpid(-job_to_fg->pgid, &status, WUNTRACED | WCONTINUED);
     put_process_in_foreground(getpgrp());
-    job_update_state(job_to_fg, status);
+    process_update_state(pid, status);
     if (job_to_fg->current_state >= P_DONE)
         job_to_fg->notified_state = job_to_fg->current_state;
     if (job_to_fg->current_state == P_DONE)
