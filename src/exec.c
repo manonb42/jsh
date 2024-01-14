@@ -13,6 +13,14 @@
 #include "internalcmd.h"
 #include "jobs.h"
 
+
+void fd_set_cloexec(int fd){
+    int flags = fcntl(fd, F_GETFD);
+    flags |= FD_CLOEXEC;
+    fcntl(fd, F_SETFD, flags);
+}
+
+
 void register_process(job_t *job, command_t *command, int pid, process_state_t state, int exit){
     process_t *process = calloc(1, sizeof(process_t));
     *process = (process_t){ .pid = pid,
@@ -114,23 +122,10 @@ void exec_external(command_t *command, job_t *job)
 }
 
 void exec_command(command_t *command, job_t *job){
-
-    if (setup_redir_fd(&command->stdin, STDIN_FILENO) != 0){
-        register_process(job, command, 0, P_DONE, 1); return; }
-    if (setup_redir_fd(&command->stdout, STDOUT_FILENO) != 0){
-        register_process(job, command, 0, P_DONE, 1); return; }
-    if (setup_redir_fd(&command->stderr, STDERR_FILENO) != 0){
-        register_process(job, command, 0, P_DONE, 1); return; }
-
     char *cmd = command->argv[0];
 
     if (is_internal(cmd)) exec_internal(command, job);
     else  exec_external(command, job);
-
-
-    if (command->stdin.fd  != STDIN_FILENO)  close(command->stdin.fd);
-    if (command->stdout.fd != STDOUT_FILENO) close(command->stdout.fd);
-    if (command->stderr.fd != STDERR_FILENO) close(command->stderr.fd);
 }
 
 void exec_pipeline(pipeline_t *pipeline){
@@ -141,9 +136,33 @@ void exec_pipeline(pipeline_t *pipeline){
         .notified_state = P_NONE,
         .line = strdup(pipeline->line)};
 
+    int pipe_fds[2];
+    pipe_fds[0] = pipe_fds[1] = -1;
     for (int i=0; i<vector_length(&pipeline->commands); ++i){
+
         command_t *command = vector_at(&pipeline->commands, i);
+
+        if (setup_redir_fd(&command->stdin, STDIN_FILENO) != 0){
+            register_process(job, command, 0, P_DONE, 1); continue; }
+        if (setup_redir_fd(&command->stdout, STDOUT_FILENO) != 0){
+            register_process(job, command, 0, P_DONE, 1); continue; }
+        if (setup_redir_fd(&command->stderr, STDERR_FILENO) != 0){
+            register_process(job, command, 0, P_DONE, 1); continue; }
+
+        if (pipe_fds[0] != -1) command->stdin.fd = pipe_fds[0];
+
+        if (i+1<vector_length(&pipeline->commands)){
+            pipe(pipe_fds);
+            fd_set_cloexec(pipe_fds[0]);
+            fd_set_cloexec(pipe_fds[1]);
+            command->stdout.fd = pipe_fds[1];
+        }
+
         exec_command(command, job);
+
+        if (command->stdin.fd  != STDIN_FILENO)  close(command->stdin.fd);
+        if (command->stdout.fd != STDOUT_FILENO) close(command->stdout.fd);
+        if (command->stderr.fd != STDERR_FILENO) close(command->stderr.fd);
     }
 
     job_track(job);
