@@ -13,6 +13,24 @@
 
 jsh_t jsh = {0};
 
+void ignore_signals(){
+    struct sigaction ignore = { .sa_handler = SIG_IGN };
+    int sig_to_ignore[] = {SIGINT, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU};
+
+    for (unsigned i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
+        sigaction(sig_to_ignore[i], &ignore, NULL);
+}
+
+void default_signals(){
+    // Initializing signals handler
+    struct sigaction deflt = { .sa_handler = SIG_DFL };
+    int sig_to_default[] = {SIGINT, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU};
+
+    //  Default action
+    for (int i = 0; i < sizeof(sig_to_default) / sizeof(int); ++i)
+        sigaction(sig_to_default[i], &deflt, NULL);
+
+}
 void free_command(command_t *command)
 {
     for (int i = 0; command->argv[i]; ++i)
@@ -30,15 +48,7 @@ int main()
     rl_initialize();
     rl_outstream = stderr;
 
-    // Initializing signals handler
-    struct sigaction ignore = {0};
-    ignore.sa_handler = SIG_IGN;
-    int sig_to_ignore[] = {SIGINT, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU};
-
-    // Ignore signals
-    for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
-        sigaction(sig_to_ignore[i], &ignore, NULL);
-
+    ignore_signals();
     while (1)
     {
         command_t *command;

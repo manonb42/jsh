@@ -45,6 +45,7 @@ void put_process_in_foreground(pid_t pid_grp)
 
 
 void exec_external_init_child(command_t *command){
+    default_signals();
 
     dup2(command->stdin.fd, STDIN_FILENO);
     dup2(command->stdout.fd, STDOUT_FILENO);
@@ -112,21 +113,7 @@ void exec_command(command_t *command){
         command->bg = false;
         jsh.last_exit_code = exec_internal(command);
     } else {
-        // Initializing signals handler
-        struct sigaction ignore = {0}, def = {0};
-        ignore.sa_handler = SIG_IGN;
-        def.sa_handler = SIG_DFL;
-        int sig_to_ignore[] = {SIGINT, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU};
-
-        //  Default action
-        for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
-            sigaction(sig_to_ignore[i], &def, NULL);
-
         jsh.last_exit_code = exec_external(command);
-
-        // Ignore signals
-        for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
-            sigaction(sig_to_ignore[i], &ignore, NULL);
     }
 
 

@@ -3,6 +3,9 @@
 #include <stdbool.h>
 #include "vector.h"
 
+void ignore_signals();
+void default_signals();
+
 typedef enum command_redir_type_t
 {
   R_NONE,
