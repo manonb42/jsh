@@ -84,7 +84,7 @@ command_t *parse_command(char *read)
         {
             if (!strcmp(arg, symbols[j]))
             {
-                if (next_arg || !strcmp(next_arg, "|"))
+                if (!next_arg || !strcmp(next_arg, "|"))
                 {
                     fprintf(stderr, "jsh: Syntax error : invalid usage of '%s'\n", arg);
                     jsh.last_exit_code = 1;
