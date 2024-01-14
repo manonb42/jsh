@@ -3,6 +3,6 @@
 
 #include "jsh.h"
 
-command_t *read_command();
+pipeline_t *read_pipeline();
 
 #endif // INPUT_H_

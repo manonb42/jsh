@@ -37,6 +37,24 @@ char **split_string(char *chemin, char *separateur)
     return composantes;
 }
 
+char *join_strings(int count, char **strs, char *join){
+    if (count == 0) return calloc(1, 1);
+
+    int out_len = 0;
+    for (int i=0; i<count; ++i)
+        out_len += strlen(strs[i]);
+    out_len += strlen(join) * (count - 1);
+
+    char *out = calloc(1, out_len + 1);
+    char *cur = out;
+    for (int i=0; i<count-1; ++i){
+        cur = stpcpy(cur, strs[i]);
+        cur = stpcpy(cur, join);
+    }
+    cur = stpcpy(cur, strs[count-1]);
+    return out;
+}
+
 int nb_chiffres(int nb)
 {
     int i = 1;
@@ -45,38 +63,18 @@ int nb_chiffres(int nb)
     return i;
 }
 
-command_t *parse_command(char *read)
+command_t *parse_command(int partc, char **parts)
 {
     command_t *out = calloc(1, sizeof(command_t));
-    char *line = strdup(read);
-    char **parts = split_string(read, " ");
     vector argv = vector_empty();
 
     char *symbols[] = {"<", ">", ">|", ">>", "2>", "2>|", "2>>"};
     command_redir_type_t flags[] = {R_INPUT, R_NO_CLOBBER, R_CLOBBER, R_APPEND, R_NO_CLOBBER, R_CLOBBER, R_APPEND};
     command_redir_t *target[] = {&out->stdin, &out->stdout, &out->stdout, &out->stdout, &out->stderr, &out->stderr, &out->stderr};
 
-    for (int i = 0; parts[i] != NULL; ++i)
+    for (int i = 0; i < partc; ++i)
     {
         char *arg = parts[i];
-        char *next_arg = parts[i + 1];
-
-        // Managing '&'
-        if (!strcmp(parts[i], "&"))
-        {
-            if (next_arg)
-            {
-                fprintf(stderr, "jsh: Syntax error : invalid usage of '%s'\n", arg);
-                jsh.last_exit_code = 1;
-                return NULL;
-            }
-            else
-            {
-                line[strlen(line) - 2] = '\0';
-                out->bg = true;
-                continue;
-            }
-        }
 
         // Managing redirections
         bool redir = false;
@@ -107,21 +105,64 @@ command_t *parse_command(char *read)
         vector_append(&argv, strdup(parts[i]));
     }
 
-    for (int i = 0; parts[i] != NULL; ++i)
-        free(parts[i]);
-    free(parts);
-
     vector_append(&argv, NULL);
     vector_shrink(&argv);
     out->argc = vector_length(&argv) - 1;
     out->argv = (char **)argv.data;
-    out->line = line;
+    out->line = join_strings(partc, parts, " ");
 
     return out;
 }
 
-command_t *read_command()
-{
+
+pipeline_t *parse_pipeline(char * line){
+
+    char **parts = split_string(line, " ");
+    int partc;
+    for (partc = 0; parts[partc] != NULL; ++partc);
+
+    if (partc == 0) { free(parts); return NULL;};
+
+    pipeline_t *out = calloc(1, sizeof(pipeline_t));
+
+    // Managing '&'
+    for (int i=0; i<partc-1; ++i){
+        if (strcmp(parts[i], "&") == 0){
+            fprintf(stderr, "jsh: Syntax error : invalid usage of '&'\n");
+            jsh.last_exit_code = 1;
+            return NULL;
+        }
+    }
+    if (strcmp(parts[partc-1], "&") == 0){
+        out->background = true;
+        partc--;
+    }
+
+    int start = 0;
+    int end = 0;
+    while (start < partc){
+        while (end < partc && strcmp(parts[end], "|") != 0) ++end;
+        vector_append(&out->commands, parse_command(end - start, &parts[start]));
+        start = end + 1;
+        end = start;
+    }
+
+    vector_shrink(&out->commands);
+    out->line = join_strings(partc, parts, " ");
+
+    for (int i=0; parts[i] != NULL; ++i) free(parts[i]);
+    free(parts);
+
+    //FIXME:
+    for (int i=0; i<vector_length(&out->commands); ++i){
+        command_t *c = vector_at(&out->commands, i);
+        c->bg = out->background;
+    }
+
+    return out;
+}
+
+char *get_prompt(){
     // Previous calculations
     char pwd[1024];
     getcwd(pwd, sizeof(pwd));
@@ -131,26 +172,22 @@ command_t *read_command()
     unsigned int nbcj = nb_chiffres(nbjobs);
 
     // Formatting prompt
-    char prompt[30];
+    char *prompt = calloc(64, 1);
     unsigned int lenprompt = 4 + nbcj; // 4 for "[]$␣" & nbcj for nbjobs
     if (strlen(curdir) + lenprompt > 30)
         sprintf(prompt, "%s[%ld]%s...%s%s$ ", cyan, nbjobs, vert, (curdir + (strlen(curdir) - 30 + lenprompt + 3)), normal);
     else
         sprintf(prompt, "%s[%ld]%s%s%s$ ", cyan, nbjobs, vert, curdir, normal);
+    return prompt;
+}
 
+pipeline_t *read_pipeline(){
+    char *prompt = get_prompt();
     char *read = readline(prompt);
-
-    if (!read)
-        return parse_command("exit");
-
-    if (!strcmp(read, ""))
-    {
-        free(read);
-        return NULL;
-    }
-    add_history(read);
-
-    command_t *out = parse_command(read);
+    free(prompt);
+    if (read == NULL) { return parse_pipeline("exit");}
+    pipeline_t *out = parse_pipeline(read);
+    if (out != NULL) { add_history(read); }
     free(read);
     return out;
 }

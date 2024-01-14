@@ -73,18 +73,19 @@ int main()
     rl_outstream = stderr;
 
     ignore_signals();
+
     while (1)
     {
-        command_t *command;
+        pipeline_t *pipeline;
         do
         {
             // Update status of all processes of each job
             job_update_background_states();
             job_notify_state_changes();
-            command = read_command();
-        } while (command == NULL);
-        exec_command(command);
-        free_command(command);
+            pipeline = read_pipeline();
+        } while (pipeline == NULL);
+        exec_command(vector_at(&pipeline->commands, 0));
+        free_pipeline(pipeline);
     }
 
     return 0;
