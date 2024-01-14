@@ -22,8 +22,7 @@ bool parse_number(char *s, int *out)
     char *end;
     int code = strtol(s, &end, 10);
 
-    if (*end != '\0')
-        return 0;
+    if (*end != '\0') return 0;
     *out = code;
     return 1;
 }
@@ -213,38 +212,28 @@ int exec_bg(command_t *command)
         dprintf(command->stderr.fd, "jsh: bg: bad argument\n");
         return 1;
     }
-    kill(job_to_bg->pgid, SIGCONT);
+    kill(-job_to_bg->pgid, SIGCONT);
     return 0;
 }
 
 int exec_fg(command_t *command)
 {
-    // assuming number of jobs < 10
-    if (command->argc != 2 || (command->argv)[1][0] != '%')
+    int jid;
+    if (command->argc != 2 || (command->argv)[1][0] != '%' || !parse_number(&command->argv[1][1], &jid))
     {
         dprintf(command->stderr.fd, "jsh: fg: bad argument\n");
         return 1;
     }
 
-    job_t *job_to_fg = job_by_id(atoi((command->argv)[1] + 1));
-    if (job_to_fg == NULL)
+    job_t *job = job_by_id(jid);
+    if (job == NULL)
     {
         dprintf(command->stderr.fd, "jsh: fg: bad argument\n");
         return 1;
     }
-    job_to_fg->running_fg = 1;
-    put_process_in_foreground(job_to_fg->pgid);
-    kill(job_to_fg->pgid, SIGCONT);
-    int status;
-    // sleep(1);
-    int pid = waitpid(-job_to_fg->pgid, &status, WUNTRACED | WCONTINUED);
-    put_process_in_foreground(getpgrp());
-    process_update_state(pid, status);
-    if (job_to_fg->current_state >= P_DONE)
-        job_to_fg->notified_state = job_to_fg->current_state;
-    if (job_to_fg->current_state == P_DONE)
-        return WEXITSTATUS(status);
-    job_display_state(job_to_fg, stderr);
+    job->current_state = job->notified_state = P_RUNNING;
+    kill(-job->pgid, SIGCONT);
+    job_foreground(job);
     return 0;
 }
 

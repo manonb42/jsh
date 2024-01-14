@@ -68,7 +68,6 @@ void put_process_in_foreground(pid_t pid_grp)
 
 void job_foreground(job_t *job)
 {
-    job_update_state(job);
 
     if (job->current_state == P_DONE)
     {
@@ -217,6 +216,7 @@ void exec_pipeline(pipeline_t *pipeline)
 
     }
 
+    job_update_state(job);
     job_track(job);
     if (!pipeline->background)
         job_foreground(job);
