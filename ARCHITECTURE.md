@@ -39,3 +39,23 @@ Nous avons développé notre code de façon modulaire, et avons donc découpé n
 2.  **jobs.h , vector.h, input.h, exec.h, internalcmd.h:**
     
     -   Contiennent des définitions de fonctions.
+
+##  Gestion d'une commande
+
+### Lecture
+Cela se passe dans le fichier *input.c*
+
+Premièrement, on affiche le prompt comme demandé dans l'énoncé, ensuite on lit la ligne entrée par l'utilisateur. Suite à ça on parse la commande, en vérifiant que la syntaxe est correcte, et on créé notre objet **pipeline_t**, contenant la liste des commandes à exécuter, un attribut correspondant à l'exécution en arrière-plan ou non, ainsi que la ligne entrée par l'utilisateur.
+
+### Exécution
+Cela se passe dans les fichiers *exec.c* et *internalcmd.c*
+
+Dans la fonction **exec_pipeline**, la première étape est d'initialiser un **job** correspondant à notre commande, contenant le **pgid**, **l'état**, et la **ligne** entrée par l'utilisateur. Suite à ça on initialise les potentiels tubes, et on exécute au fur et à mesure les différentes commandes via *exec_command*.
+Les commandes internes sont définies à la main dans le fichier *internalcmd.c*.
+Pour les fonctions externes, on utilise une fonction de la famille *exec* couplée à un *fork*, et on met à jour le job.
+Ensuite, on ajoute le job à jsh, et si la commande est à exécuter en avant-plan, on attend, sinon on passe à la suite.
+
+### Suite
+Quand une commande a terminé son exécution, on libère la mémoire allouée au pointeurs utilisés, puis on recommence la boucle principale : on met à jour les jobs et on affiche ceux dont l'état a changé, puis on répète le processus de gestion de commande expliqué plus haut.
+
+
