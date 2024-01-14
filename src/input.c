@@ -82,9 +82,9 @@ command_t *parse_command(char *read)
         bool redir = false;
         for (int j = 0; j < sizeof(symbols) / sizeof(char *); ++j)
         {
-            if (!strcmp(parts[i], symbols[j]))
+            if (!strcmp(arg, symbols[j]))
             {
-                if (!parts[i + 1])
+                if (next_arg || !strcmp(next_arg, "|"))
                 {
                     fprintf(stderr, "jsh: Syntax error : invalid usage of '%s'\n", arg);
                     jsh.last_exit_code = 1;

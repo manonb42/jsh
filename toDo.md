@@ -19,7 +19,7 @@
 
 - [x] `&` qui n'est pas à la fin (**input.c:64**)
 - [x] `cmd > ` - redirection vers rien (**input.c:87**)
-- [ ] `cmd > | ...` - redirection vers pipe
+- [x] `cmd > | ...` - redirection vers pipe
 - [ ] `cmd | | ...` - double pipe
 
 ## Formatage du prompt
@@ -50,7 +50,7 @@
 - [x] `exit val`, `exit` (**internalcmd.c:79**)
 - [x] `jobs` (**internalcmd.c:107**)
 - [ ] `jobs -t`
-- [ ] `jobs %job`
+- [x] `jobs %job`
 - [x] `bg %job`, `fg %job` (**internalcmd.c:XXX**)
 - [x] `kill [-sig] %job`, `kill [-sig] pid` (**internalcmd.c:122**)
 
