@@ -16,6 +16,7 @@ typedef struct command_redir_t
 {
   command_redir_type_t type;
   char *path;
+  int fd;
 } command_redir_t;
 
 typedef struct command_t
