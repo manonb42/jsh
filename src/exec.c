@@ -43,6 +43,23 @@ void put_process_in_foreground(pid_t pid_grp)
     sigprocmask(SIG_SETMASK, &s_courant, NULL);
 }
 
+
+void exec_external_init_child(command_t *command){
+
+    dup2(command->stdin.fd, STDIN_FILENO);
+    dup2(command->stdout.fd, STDOUT_FILENO);
+    dup2(command->stderr.fd, STDERR_FILENO);
+
+    // Process group created for pid
+    setpgid(0, 0);
+    // Put this process group in foreground
+    if (!command->bg)
+        put_process_in_foreground(getpgrp());
+
+    execvp(command->argv[0], command->argv);
+    perror("jsh");
+    exit(127);
+}
 int exec_external(command_t *command)
 {
     int pid = fork();
@@ -53,18 +70,7 @@ int exec_external(command_t *command)
         exit(2);
     }
 
-    if (!pid)
-    {
-        // Process group created for pid
-        setpgid(0, 0);
-        // Put this process group in foreground
-        if (!command->bg)
-            put_process_in_foreground(getpgrp());
-
-        execvp(command->argv[0], command->argv);
-        perror("jsh");
-        exit(127);
-    }
+    if (!pid){ exec_external_init_child(command);}
 
     // Shell process group
     setpgid(pid, 0);
@@ -90,8 +96,7 @@ int exec_external(command_t *command)
     return 0;
 }
 
-void exec_command(command_t *command)
-{
+void exec_command(command_t *command){
 
     if (setup_redir_fd(&command->stdin, STDIN_FILENO) != 0){
         jsh.last_exit_code = 1; return; }
@@ -106,49 +111,26 @@ void exec_command(command_t *command)
     {
         command->bg = false;
         jsh.last_exit_code = exec_internal(command);
-        return;
+    } else {
+        // Initializing signals handler
+        struct sigaction ignore = {0}, def = {0};
+        ignore.sa_handler = SIG_IGN;
+        def.sa_handler = SIG_DFL;
+        int sig_to_ignore[] = {SIGINT, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU};
+
+        //  Default action
+        for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
+            sigaction(sig_to_ignore[i], &def, NULL);
+
+        jsh.last_exit_code = exec_external(command);
+
+        // Ignore signals
+        for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
+            sigaction(sig_to_ignore[i], &ignore, NULL);
     }
 
 
-    int original_stdin = dup(STDIN_FILENO);
-    int original_stdout = dup(STDOUT_FILENO);
-    int original_stderr = dup(STDERR_FILENO);
-
-    if (command->stdin.fd != STDIN_FILENO){
-        dup2(command->stdin.fd, STDIN_FILENO);
-        close(command->stdin.fd);
-    }
-    if (command->stdout.fd != STDOUT_FILENO){
-        dup2(command->stdout.fd, STDOUT_FILENO);
-        close(command->stdout.fd);
-    }
-    if (command->stderr.fd != STDERR_FILENO){
-        dup2(command->stderr.fd, STDERR_FILENO);
-        close(command->stderr.fd);
-    }
-
-    // Initializing signals handler
-    struct sigaction ignore = {0}, def = {0};
-    ignore.sa_handler = SIG_IGN;
-    def.sa_handler = SIG_DFL;
-    int sig_to_ignore[] = {SIGINT, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU};
-
-    //  Default action
-    for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
-        sigaction(sig_to_ignore[i], &def, NULL);
-
-    jsh.last_exit_code = exec_external(command);
-
-    // Ignore signals
-    for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
-        sigaction(sig_to_ignore[i], &ignore, NULL);
-
-    // Default input/output
-    dup2(original_stdin, STDIN_FILENO);
-    dup2(original_stdout, STDOUT_FILENO);
-    dup2(original_stderr, STDERR_FILENO);
-
-    close(original_stdin);
-    close(original_stdout);
-    close(original_stderr);
+    if (command->stdin.fd  != STDIN_FILENO)  close(command->stdin.fd);
+    if (command->stdout.fd != STDOUT_FILENO) close(command->stdout.fd);
+    if (command->stderr.fd != STDERR_FILENO) close(command->stderr.fd);
 }
