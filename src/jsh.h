@@ -62,8 +62,8 @@ typedef enum process_state_t
 typedef struct process_t
 {
   int pid;
-  process_state_t current_state;
-  process_state_t notified_state;
+  process_state_t state;
+  int exit_code;
   char *line;
 } process_t;
 
