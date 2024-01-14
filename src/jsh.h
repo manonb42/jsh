@@ -48,7 +48,6 @@ typedef struct pipeline_t
 
 void free_pipeline(pipeline_t *pipeline);
 
-
 typedef enum process_state_t
 {
   P_NONE,
@@ -85,7 +84,6 @@ typedef struct job_t
 
 void free_job(job_t *job);
 typedef struct vector job_v;
-
 
 typedef struct jsh_t
 {

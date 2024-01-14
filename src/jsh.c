@@ -13,23 +13,24 @@
 
 jsh_t jsh = {0};
 
-void ignore_signals(){
-    struct sigaction ignore = { .sa_handler = SIG_IGN };
+void ignore_signals()
+{
+    struct sigaction ignore = {.sa_handler = SIG_IGN};
     int sig_to_ignore[] = {SIGINT, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU};
 
     for (unsigned i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
         sigaction(sig_to_ignore[i], &ignore, NULL);
 }
 
-void default_signals(){
+void default_signals()
+{
     // Initializing signals handler
-    struct sigaction deflt = { .sa_handler = SIG_DFL };
+    struct sigaction deflt = {.sa_handler = SIG_DFL};
     int sig_to_default[] = {SIGINT, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU};
 
     //  Default action
     for (int i = 0; i < sizeof(sig_to_default) / sizeof(int); ++i)
         sigaction(sig_to_default[i], &deflt, NULL);
-
 }
 void free_command(command_t *command)
 {
@@ -45,27 +46,27 @@ void free_command(command_t *command)
 
 void free_pipeline(pipeline_t *pipeline)
 {
-    for (int i=0; i<vector_length(&pipeline->commands); ++i)
+    for (int i = 0; i < vector_length(&pipeline->commands); ++i)
         free_command(vector_at(&pipeline->commands, i));
     vector_free(pipeline->commands);
     free(pipeline->line);
     free(pipeline);
 }
 
-void free_process(process_t *process) {
+void free_process(process_t *process)
+{
     free(process->line);
     free(process);
 }
 
 void free_job(job_t *job)
 {
-    for (int i=0; i<vector_length(&job->processes); ++i)
+    for (int i = 0; i < vector_length(&job->processes); ++i)
         free_process(vector_at(&job->processes, i));
     vector_free(job->processes);
     free(job->line);
     free(job);
 }
-
 
 int main()
 {

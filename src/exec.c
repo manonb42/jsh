@@ -13,34 +13,54 @@
 #include "internalcmd.h"
 #include "jobs.h"
 
-
-void fd_set_cloexec(int fd){
+void fd_set_cloexec(int fd)
+{
     int flags = fcntl(fd, F_GETFD);
     flags |= FD_CLOEXEC;
     fcntl(fd, F_SETFD, flags);
 }
 
-
-void register_process(job_t *job, command_t *command, int pid, process_state_t state, int exit){
+void register_process(job_t *job, command_t *command, int pid, process_state_t state, int exit)
+{
     process_t *process = calloc(1, sizeof(process_t));
-    *process = (process_t){ .pid = pid,
-                            .state = state,
-                            .exit_code = exit,
-                            .line = strdup(command->line)};
+    *process = (process_t){.pid = pid,
+                           .state = state,
+                           .exit_code = exit,
+                           .line = strdup(command->line)};
     vector_append(&job->processes, process);
 }
 
-int setup_redir_fd(command_redir_t *redir, int default_fd){
-  int fd;
-  switch (redir->type) {
-    case R_NONE: fd = default_fd; break;
-    case R_INPUT: fd = open(redir->path, O_RDONLY | O_CLOEXEC); break;
-    case R_NO_CLOBBER: fd = open(redir->path, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC | O_CLOEXEC, 0664); break;
-    case R_CLOBBER: fd = open(redir->path, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0664); break;
-    case R_APPEND: fd = open(redir->path, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0664); break;
-  }
-  if (fd >= 0) { redir->fd = fd; return 0;}
-  else { perror("jsh"); return -1; }
+int setup_redir_fd(command_redir_t *redir, int default_fd)
+{
+    int fd;
+    switch (redir->type)
+    {
+    case R_NONE:
+        fd = default_fd;
+        break;
+    case R_INPUT:
+        fd = open(redir->path, O_RDONLY | O_CLOEXEC);
+        break;
+    case R_NO_CLOBBER:
+        fd = open(redir->path, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC | O_CLOEXEC, 0664);
+        break;
+    case R_CLOBBER:
+        fd = open(redir->path, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0664);
+        break;
+    case R_APPEND:
+        fd = open(redir->path, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0664);
+        break;
+    }
+    if (fd >= 0)
+    {
+        redir->fd = fd;
+        return 0;
+    }
+    else
+    {
+        perror("jsh");
+        return -1;
+    }
 }
 
 void put_process_in_foreground(pid_t pid_grp)
@@ -60,35 +80,40 @@ void put_process_in_foreground(pid_t pid_grp)
     sigprocmask(SIG_SETMASK, &s_courant, NULL);
 }
 
-void job_foreground(job_t *job){
+void job_foreground(job_t *job)
+{
     job_update_state(job);
 
-    if (job->current_state == P_DONE){
-         process_t *process = vector_at(&job->processes, 0);
-         job->notified_state = job->current_state;
-         jsh.last_exit_code = process->exit_code;
-         return;
+    if (job->current_state == P_DONE)
+    {
+        process_t *process = vector_at(&job->processes, 0);
+        job->notified_state = job->current_state;
+        jsh.last_exit_code = process->exit_code;
+        return;
     }
 
-     put_process_in_foreground(job->pgid);
-     int status;
-     while (job->current_state == P_RUNNING){
+    put_process_in_foreground(job->pgid);
+    int status;
+    while (job->current_state == P_RUNNING)
+    {
         int pid = waitpid(-job->pgid, &status, WUNTRACED | WCONTINUED);
         process_update_state(pid, status);
-     }
+    }
 
     if (job->current_state >= P_DONE)
         job->notified_state = job->current_state;
-    if (job->current_state == P_DONE){
+    if (job->current_state == P_DONE)
+    {
         job->notified_state = job->current_state;
-        process_t *process = vector_at(&job->processes, vector_length(&job->processes)-1);
+        process_t *process = vector_at(&job->processes, vector_length(&job->processes) - 1);
         jsh.last_exit_code = process->exit_code;
     }
 
     put_process_in_foreground(getpgrp());
 }
 
-void exec_external_init_child(command_t *command, job_t *job){
+void exec_external_init_child(command_t *command, job_t *job)
+{
     default_signals();
 
     dup2(command->stdin.fd, STDIN_FILENO);
@@ -112,23 +137,30 @@ void exec_external(command_t *command, job_t *job)
         exit(2);
     }
 
-    if (!pid){ exec_external_init_child(command, job);}
+    if (!pid)
+    {
+        exec_external_init_child(command, job);
+    }
 
-    if (job->pgid == 0) job->pgid = pid;
+    if (job->pgid == 0)
+        job->pgid = pid;
     setpgid(pid, job->pgid);
 
     register_process(job, command, pid, P_RUNNING, 0);
-
 }
 
-void exec_command(command_t *command, job_t *job){
+void exec_command(command_t *command, job_t *job)
+{
     char *cmd = command->argv[0];
 
-    if (is_internal(cmd)) exec_internal(command, job);
-    else  exec_external(command, job);
+    if (is_internal(cmd))
+        exec_internal(command, job);
+    else
+        exec_external(command, job);
 }
 
-void exec_pipeline(pipeline_t *pipeline){
+void exec_pipeline(pipeline_t *pipeline)
+{
     job_t *job = calloc(1, sizeof(job_t));
     *job = (job_t){
         .pgid = 0,
@@ -138,20 +170,32 @@ void exec_pipeline(pipeline_t *pipeline){
 
     int pipe_fds[2];
     pipe_fds[0] = pipe_fds[1] = -1;
-    for (int i=0; i<vector_length(&pipeline->commands); ++i){
+    for (int i = 0; i < vector_length(&pipeline->commands); ++i)
+    {
 
         command_t *command = vector_at(&pipeline->commands, i);
 
-        if (setup_redir_fd(&command->stdin, STDIN_FILENO) != 0){
-            register_process(job, command, 0, P_DONE, 1); continue; }
-        if (setup_redir_fd(&command->stdout, STDOUT_FILENO) != 0){
-            register_process(job, command, 0, P_DONE, 1); continue; }
-        if (setup_redir_fd(&command->stderr, STDERR_FILENO) != 0){
-            register_process(job, command, 0, P_DONE, 1); continue; }
+        if (setup_redir_fd(&command->stdin, STDIN_FILENO) != 0)
+        {
+            register_process(job, command, 0, P_DONE, 1);
+            continue;
+        }
+        if (setup_redir_fd(&command->stdout, STDOUT_FILENO) != 0)
+        {
+            register_process(job, command, 0, P_DONE, 1);
+            continue;
+        }
+        if (setup_redir_fd(&command->stderr, STDERR_FILENO) != 0)
+        {
+            register_process(job, command, 0, P_DONE, 1);
+            continue;
+        }
 
-        if (pipe_fds[0] != -1) command->stdin.fd = pipe_fds[0];
+        if (pipe_fds[0] != -1)
+            command->stdin.fd = pipe_fds[0];
 
-        if (i+1<vector_length(&pipeline->commands)){
+        if (i + 1 < vector_length(&pipeline->commands))
+        {
             pipe(pipe_fds);
             fd_set_cloexec(pipe_fds[0]);
             fd_set_cloexec(pipe_fds[1]);
@@ -160,11 +204,15 @@ void exec_pipeline(pipeline_t *pipeline){
 
         exec_command(command, job);
 
-        if (command->stdin.fd  != STDIN_FILENO)  close(command->stdin.fd);
-        if (command->stdout.fd != STDOUT_FILENO) close(command->stdout.fd);
-        if (command->stderr.fd != STDERR_FILENO) close(command->stderr.fd);
+        if (command->stdin.fd != STDIN_FILENO)
+            close(command->stdin.fd);
+        if (command->stdout.fd != STDOUT_FILENO)
+            close(command->stdout.fd);
+        if (command->stderr.fd != STDERR_FILENO)
+            close(command->stderr.fd);
     }
 
     job_track(job);
-    if (!pipeline->background) job_foreground(job);
+    if (!pipeline->background)
+        job_foreground(job);
 }

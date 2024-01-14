@@ -12,7 +12,8 @@
 
 char *internals[] = {"pwd", "cd", "exit", "?", "kill", "jobs", "bg", "fg"};
 
-void dperror(int fd, char *prefix){
+void dperror(int fd, char *prefix)
+{
     dprintf(fd, "%s : %s\n", prefix, strerror(errno));
 }
 
@@ -85,7 +86,7 @@ int exec_cd(command_t *command)
     return 0;
 }
 
-int exec_exit( command_t *command)
+int exec_exit(command_t *command)
 {
     int code = jsh.last_exit_code;
     if (job_count() > 0)
@@ -116,18 +117,22 @@ int exec_show_last_return_code(command_t *command)
 
 int exec_jobs(command_t *command)
 {
-    if(command->argc > 2) {
+    if (command->argc > 2)
+    {
         dprintf(command->stderr.fd, "jsh: bg: bad argument\n");
         return 1;
     }
-    int job_to_display = 0; //if we display all jobs
-    if(command->argc == 2 && !strcmp((command->argv)[1], "-t")) {
-    //jobs -t
+    int job_to_display = 0; // if we display all jobs
+    if (command->argc == 2 && !strcmp((command->argv)[1], "-t"))
+    {
+        // jobs -t
     }
-    if(command->argc == 2 && ((command->argv)[1][0] == '%')) {
-    //jobs %job - assuming number of jobs < 10
+    if (command->argc == 2 && ((command->argv)[1][0] == '%'))
+    {
+        // jobs %job - assuming number of jobs < 10
         job_t *job = job_by_id(atoi((command->argv)[1] + 1));
-        if(job == NULL){
+        if (job == NULL)
+        {
             dprintf(command->stderr.fd, "jsh: bg: bad argument\n");
             return 1;
         }
@@ -148,13 +153,15 @@ int exec_jobs(command_t *command)
 
 int exec_bg(command_t *command)
 {
-    //assuming number of jobs < 10
-    if(command->argc != 2 || (command->argv)[1][0] != '%'){
+    // assuming number of jobs < 10
+    if (command->argc != 2 || (command->argv)[1][0] != '%')
+    {
         dprintf(command->stderr.fd, "jsh: bg: bad argument\n");
         return 1;
     }
     job_t *job_to_bg = job_by_id(atoi((command->argv)[1] + 1));
-    if(job_to_bg == NULL){
+    if (job_to_bg == NULL)
+    {
         dprintf(command->stderr.fd, "jsh: bg: bad argument\n");
         return 1;
     }
@@ -164,14 +171,16 @@ int exec_bg(command_t *command)
 
 int exec_fg(command_t *command)
 {
-    //assuming number of jobs < 10
-    if(command->argc != 2 || (command->argv)[1][0] != '%'){
+    // assuming number of jobs < 10
+    if (command->argc != 2 || (command->argv)[1][0] != '%')
+    {
         dprintf(command->stderr.fd, "jsh: fg: bad argument\n");
         return 1;
     }
 
     job_t *job_to_fg = job_by_id(atoi((command->argv)[1] + 1));
-    if(job_to_fg == NULL) {
+    if (job_to_fg == NULL)
+    {
         dprintf(command->stderr.fd, "jsh: fg: bad argument\n");
         return 1;
     }
@@ -187,7 +196,7 @@ int exec_fg(command_t *command)
         job_to_fg->notified_state = job_to_fg->current_state;
     if (job_to_fg->current_state == P_DONE)
         return WEXITSTATUS(status);
-    job_display_state(job_to_fg,stderr);
+    job_display_state(job_to_fg, stderr);
     return 0;
 }
 
@@ -241,17 +250,27 @@ bool is_internal(char *name)
     return false;
 }
 
-void exec_internal(command_t *command, job_t *job){
+void exec_internal(command_t *command, job_t *job)
+{
     char *cmd = command->argv[0];
     int code;
-    if (!strcmp(cmd, "?")) code = exec_show_last_return_code(command);
-    else if (!strcmp(cmd, "pwd")) code = exec_pwd(command);
-    else if (!strcmp(cmd, "cd")) code = exec_cd(command);
-    else if (!strcmp(cmd, "exit")) code = exec_exit(command);
-    else if (!strcmp(cmd, "jobs")) code = exec_jobs(command);
-    else if (!strcmp(cmd, "kill")) code = exec_kill(command);
-    else if (!strcmp(cmd, "bg")) code = exec_bg(command);
-    else if (!strcmp(cmd, "fg")) code = exec_fg(command);
-    else code = -1;
+    if (!strcmp(cmd, "?"))
+        code = exec_show_last_return_code(command);
+    else if (!strcmp(cmd, "pwd"))
+        code = exec_pwd(command);
+    else if (!strcmp(cmd, "cd"))
+        code = exec_cd(command);
+    else if (!strcmp(cmd, "exit"))
+        code = exec_exit(command);
+    else if (!strcmp(cmd, "jobs"))
+        code = exec_jobs(command);
+    else if (!strcmp(cmd, "kill"))
+        code = exec_kill(command);
+    else if (!strcmp(cmd, "bg"))
+        code = exec_bg(command);
+    else if (!strcmp(cmd, "fg"))
+        code = exec_fg(command);
+    else
+        code = -1;
     register_process(job, command, 0, P_DONE, code);
 }
