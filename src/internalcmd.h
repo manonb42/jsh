@@ -4,6 +4,6 @@
 #include "jsh.h"
 
 bool is_internal(char *);
-int exec_internal(command_t *);
+void exec_internal(command_t *command, job_t *job);
 
 #endif

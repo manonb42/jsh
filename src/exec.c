@@ -13,33 +13,34 @@
 #include "internalcmd.h"
 #include "jobs.h"
 
-int get_fd(command_redir_t redir)
-{
-    int out;
-    switch (redir.type)
-    {
-    case R_INPUT:
-        out = open(redir.path, O_RDONLY | O_CLOEXEC);
-        break;
-    case R_NO_CLOBBER:
-        out = open(redir.path, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC | O_CLOEXEC, 0664);
-        break;
-    case R_CLOBBER:
-        out = open(redir.path, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0664);
-        break;
-    case R_APPEND:
-        out = open(redir.path, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0664);
-        break;
-    default:
-        return -1;
-    }
-    if (out >= 0)
-        return out;
-    else
-    {
-        perror("jsh");
-        return -1;
-    }
+
+void fd_set_cloexec(int fd){
+    int flags = fcntl(fd, F_GETFD);
+    flags |= FD_CLOEXEC;
+    fcntl(fd, F_SETFD, flags);
+}
+
+
+void register_process(job_t *job, command_t *command, int pid, process_state_t state, int exit){
+    process_t *process = calloc(1, sizeof(process_t));
+    *process = (process_t){ .pid = pid,
+                            .state = state,
+                            .exit_code = exit,
+                            .line = strdup(command->line)};
+    vector_append(&job->processes, process);
+}
+
+int setup_redir_fd(command_redir_t *redir, int default_fd){
+  int fd;
+  switch (redir->type) {
+    case R_NONE: fd = default_fd; break;
+    case R_INPUT: fd = open(redir->path, O_RDONLY | O_CLOEXEC); break;
+    case R_NO_CLOBBER: fd = open(redir->path, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC | O_CLOEXEC, 0664); break;
+    case R_CLOBBER: fd = open(redir->path, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0664); break;
+    case R_APPEND: fd = open(redir->path, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0664); break;
+  }
+  if (fd >= 0) { redir->fd = fd; return 0;}
+  else { perror("jsh"); return -1; }
 }
 
 void put_process_in_foreground(pid_t pid_grp)
@@ -59,7 +60,49 @@ void put_process_in_foreground(pid_t pid_grp)
     sigprocmask(SIG_SETMASK, &s_courant, NULL);
 }
 
-int exec_external(command_t *command)
+void job_foreground(job_t *job){
+    job_update_state(job);
+
+    if (job->current_state == P_DONE){
+         process_t *process = vector_at(&job->processes, 0);
+         job->notified_state = job->current_state;
+         jsh.last_exit_code = process->exit_code;
+         return;
+    }
+
+     put_process_in_foreground(job->pgid);
+     int status;
+     while (job->current_state == P_RUNNING){
+        int pid = waitpid(-job->pgid, &status, WUNTRACED | WCONTINUED);
+        process_update_state(pid, status);
+     }
+
+    if (job->current_state >= P_DONE)
+        job->notified_state = job->current_state;
+    if (job->current_state == P_DONE){
+        job->notified_state = job->current_state;
+        process_t *process = vector_at(&job->processes, vector_length(&job->processes)-1);
+        jsh.last_exit_code = process->exit_code;
+    }
+
+    put_process_in_foreground(getpgrp());
+}
+
+void exec_external_init_child(command_t *command, job_t *job){
+    default_signals();
+
+    dup2(command->stdin.fd, STDIN_FILENO);
+    dup2(command->stdout.fd, STDOUT_FILENO);
+    dup2(command->stderr.fd, STDERR_FILENO);
+
+    setpgid(0, job->pgid);
+
+    execvp(command->argv[0], command->argv);
+    perror("jsh");
+    exit(127);
+}
+
+void exec_external(command_t *command, job_t *job)
 {
     int pid = fork();
 
@@ -69,119 +112,59 @@ int exec_external(command_t *command)
         exit(2);
     }
 
-    if (!pid)
-    {
-        // Process group created for pid
-        setpgid(0, 0);
-        // Put this process group in foreground
-        if (!command->bg)
-            put_process_in_foreground(getpgrp());
+    if (!pid){ exec_external_init_child(command, job);}
 
-        execvp(command->argv[0], command->argv);
-        perror("jsh");
-        exit(127);
-    }
+    if (job->pgid == 0) job->pgid = pid;
+    setpgid(pid, job->pgid);
 
-    // Shell process group
-    setpgid(pid, 0);
-    job_t *job = calloc(sizeof(job_t), 1);
-    *job = (job_t){.pgid = pid, .current_state = P_RUNNING, .notified_state = P_NONE, .line = strdup(command->line)};
-    job_track(job);
+    register_process(job, command, pid, P_RUNNING, 0);
 
-    // If cmd is in background
-    if (!command->bg)
-    {
-        // Blocking until the command is completed
-        int status;
-        waitpid(-pid, &status, WUNTRACED | WCONTINUED);
-        // Put the process group of the shell in foreground
-        put_process_in_foreground(getpgrp());
-        // Update status of all processes in the job
-        job_update_state(job, status);
-        if (job->current_state >= P_DONE)
-            job->notified_state = job->current_state;
-        if (job->current_state == P_DONE)
-            return WEXITSTATUS(status);
-    }
-    return 0;
 }
 
-void exec_command(command_t *command)
-{
-    int original_stdin = dup(STDIN_FILENO);
-    int original_stdout = dup(STDOUT_FILENO);
-    int original_stderr = dup(STDERR_FILENO);
-
-    // Managing input/output
-    if (command->stdin.type != R_NONE)
-    {
-        int fd = get_fd(command->stdin);
-        if (fd < 0)
-        {
-            jsh.last_exit_code = 1;
-            return;
-        }
-        dup2(fd, STDIN_FILENO);
-        close(fd);
-    }
-
-    if (command->stdout.type != R_NONE)
-    {
-        int fd = get_fd(command->stdout);
-        if (fd < 0)
-        {
-            jsh.last_exit_code = 1;
-            return;
-        }
-        dup2(fd, STDOUT_FILENO);
-        close(fd);
-    }
-
-    if (command->stderr.type != R_NONE)
-    {
-        int fd = get_fd(command->stderr);
-        if (fd < 0)
-        {
-            jsh.last_exit_code = 1;
-            return;
-        }
-        dup2(fd, STDERR_FILENO);
-        close(fd);
-    }
-
+void exec_command(command_t *command, job_t *job){
     char *cmd = command->argv[0];
 
-    // Running command
-    if (is_internal(cmd))
-    {
-        command->bg = false;
-        jsh.last_exit_code = exec_internal(command);
+    if (is_internal(cmd)) exec_internal(command, job);
+    else  exec_external(command, job);
+}
+
+void exec_pipeline(pipeline_t *pipeline){
+    job_t *job = calloc(1, sizeof(job_t));
+    *job = (job_t){
+        .pgid = 0,
+        .current_state = P_RUNNING,
+        .notified_state = P_NONE,
+        .line = strdup(pipeline->line)};
+
+    int pipe_fds[2];
+    pipe_fds[0] = pipe_fds[1] = -1;
+    for (int i=0; i<vector_length(&pipeline->commands); ++i){
+
+        command_t *command = vector_at(&pipeline->commands, i);
+
+        if (setup_redir_fd(&command->stdin, STDIN_FILENO) != 0){
+            register_process(job, command, 0, P_DONE, 1); continue; }
+        if (setup_redir_fd(&command->stdout, STDOUT_FILENO) != 0){
+            register_process(job, command, 0, P_DONE, 1); continue; }
+        if (setup_redir_fd(&command->stderr, STDERR_FILENO) != 0){
+            register_process(job, command, 0, P_DONE, 1); continue; }
+
+        if (pipe_fds[0] != -1) command->stdin.fd = pipe_fds[0];
+
+        if (i+1<vector_length(&pipeline->commands)){
+            pipe(pipe_fds);
+            fd_set_cloexec(pipe_fds[0]);
+            fd_set_cloexec(pipe_fds[1]);
+            command->stdout.fd = pipe_fds[1];
+        }
+
+        exec_command(command, job);
+
+        if (command->stdin.fd  != STDIN_FILENO)  close(command->stdin.fd);
+        if (command->stdout.fd != STDOUT_FILENO) close(command->stdout.fd);
+        if (command->stderr.fd != STDERR_FILENO) close(command->stderr.fd);
     }
-    else
-    {
-        // Initializing signals handler
-        struct sigaction ignore = {0}, def = {0};
-        ignore.sa_handler = SIG_IGN;
-        def.sa_handler = SIG_DFL;
-        int sig_to_ignore[] = {SIGINT, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU};
 
-        //  Default action
-        for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
-            sigaction(sig_to_ignore[i], &def, NULL);
-
-        jsh.last_exit_code = exec_external(command);
-
-        // Ignore signals
-        for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
-            sigaction(sig_to_ignore[i], &ignore, NULL);
-    }
-
-    // Default input/output
-    dup2(original_stdin, STDIN_FILENO);
-    dup2(original_stdout, STDOUT_FILENO);
-    dup2(original_stderr, STDERR_FILENO);
-
-    close(original_stdin);
-    close(original_stdout);
-    close(original_stderr);
+    job_track(job);
+    if (!pipeline->background) job_foreground(job);
 }

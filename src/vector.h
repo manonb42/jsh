@@ -21,4 +21,6 @@ void *vector_at(vector *v, int i);
 void *vector_set(vector *v, int i, void *element);
 void *vector_remove(vector *v, int i);
 
+void vector_free(vector v);
+
 #endif // VECTOR_H_
