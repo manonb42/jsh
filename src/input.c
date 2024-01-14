@@ -143,25 +143,11 @@ command_t *parse_command(int partc, char **parts)
     return out;
 }
 
-<<<<<<< HEAD
-pipeline_t *parse_pipeline(char *line)
-{
-
-    char **parts = split_string(line, " ");
-    int partc;
-    for (partc = 0; parts[partc] != NULL; ++partc)
-        ;
-=======
 
 pipeline_t *parse_pipeline(int partc, char **parts){
 
->>>>>>> e9ca6b8 (input: parse substitutions)
 
-    if (partc == 0)
-    {
-        free(parts);
-        return NULL;
-    };
+    if (partc == 0) { return NULL;};
 
     pipeline_t *out = calloc(1, sizeof(pipeline_t));
 
@@ -206,16 +192,6 @@ pipeline_t *parse_pipeline(int partc, char **parts){
     vector_shrink(&out->commands);
     out->line = join_strings(partc, parts, " ");
 
-    for (int i = 0; parts[i] != NULL; ++i)
-        free(parts[i]);
-    free(parts);
-
-    // FIXME:
-    for (int i = 0; i < vector_length(&out->commands); ++i)
-    {
-        command_t *c = vector_at(&out->commands, i);
-        c->bg = out->background;
-    }
 
     return out;
 }
@@ -245,26 +221,18 @@ pipeline_t *read_pipeline()
     char *prompt = get_prompt();
     char *read = readline(prompt);
     free(prompt);
-<<<<<<< HEAD
-    if (read == NULL)
-    {
-        return parse_pipeline("exit");
-    }
-    pipeline_t *out = parse_pipeline(read);
-    if (out != NULL)
-    {
-        add_history(read);
-    }
-=======
     if (read == NULL) { read = strdup("exit"); }
 
     char **parts = split_string(read, " ");
     int partc;
     for (partc = 0; parts[partc] != NULL; ++partc);
+
     pipeline_t *out = parse_pipeline(partc, parts);
 
+    for (int i=0; parts[i] != NULL; ++i) free(parts[i]);
+    free(parts);
+
     if (out != NULL) { add_history(read); }
->>>>>>> e9ca6b8 (input: parse substitutions)
     free(read);
     return out;
 }

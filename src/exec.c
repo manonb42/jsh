@@ -20,8 +20,14 @@ void fd_set_cloexec(int fd)
     fcntl(fd, F_SETFD, flags);
 }
 
-void register_process(job_t *job, command_t *command, int pid, process_state_t state, int exit)
-{
+void fd_clear_cloexec(int fd){
+    int flags = fcntl(fd, F_GETFD);
+    flags &= ~FD_CLOEXEC;
+    fcntl(fd, F_SETFD, flags);
+}
+
+
+void register_process(job_t *job, command_t *command, int pid, process_state_t state, int exit){
     process_t *process = calloc(1, sizeof(process_t));
     *process = (process_t){.pid = pid,
                            .state = state,
@@ -30,39 +36,6 @@ void register_process(job_t *job, command_t *command, int pid, process_state_t s
     vector_append(&job->processes, process);
 }
 
-<<<<<<< HEAD
-int setup_redir_fd(command_redir_t *redir, int default_fd)
-{
-    int fd;
-    switch (redir->type)
-    {
-    case R_NONE:
-        fd = default_fd;
-        break;
-    case R_INPUT:
-        fd = open(redir->path, O_RDONLY | O_CLOEXEC);
-        break;
-    case R_NO_CLOBBER:
-        fd = open(redir->path, O_CREAT | O_EXCL | O_WRONLY | O_TRUNC | O_CLOEXEC, 0664);
-        break;
-    case R_CLOBBER:
-        fd = open(redir->path, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0664);
-        break;
-    case R_APPEND:
-        fd = open(redir->path, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0664);
-        break;
-    }
-    if (fd >= 0)
-    {
-        redir->fd = fd;
-        return 0;
-    }
-    else
-    {
-        perror("jsh");
-        return -1;
-    }
-=======
 int setup_redir_fd(command_redir_t *redir){
   int fd;
   switch (redir->type) {
@@ -74,7 +47,6 @@ int setup_redir_fd(command_redir_t *redir){
   }
   if (fd >= 0) { redir->fd = fd; return 0;}
   else { perror("jsh"); return -1; }
->>>>>>> ae93faf (misc: set default redir fd in input)
 }
 
 void put_process_in_foreground(pid_t pid_grp)
@@ -145,8 +117,7 @@ void exec_external(command_t *command, job_t *job)
 {
     int pid = fork();
 
-    if (pid < 0)
-    {
+    if (pid < 0) {
         perror("jsh");
         exit(2);
     }
@@ -163,8 +134,16 @@ void exec_external(command_t *command, job_t *job)
     register_process(job, command, pid, P_RUNNING, 0);
 }
 
-void exec_command(command_t *command, job_t *job)
-{
+void mkfifotmp(char **path){
+    char dir[] = "/tmp/jsh.XXXXXX";
+    mkdtemp(dir);
+    asprintf(path, "%s/pipe", dir);
+    mkfifo(*path, 0600);
+}
+
+
+
+void exec_command(command_t *command, job_t *job){
     char *cmd = command->argv[0];
 
     if (setup_redir_fd(&command->stdin) != 0){
@@ -174,9 +153,34 @@ void exec_command(command_t *command, job_t *job)
     if (setup_redir_fd(&command->stderr) != 0){
         register_process(job, command, 0, P_DONE, 1); return; }
 
+    for (int i=0; i<vector_length(&command->substitutions); ++i){
+        substitution_t *subst = vector_at(&command->substitutions, i);
+        mkfifotmp(&subst->file);
+
+        int fds[2];
+        pipe(fds);
+
+        subst->fd = fds[0];
+        command_v cmds = subst->pipeline->commands;
+        command_t *last = vector_at(&cmds, vector_length(&cmds)-1);
+        last->stdout.fd = fds[1];
+
+        fd_set_cloexec(subst->fd);
+        fd_set_cloexec(last->stdout.fd);
+        exec_pipeline(subst->pipeline);
+
+        asprintf(&command->argv[subst->offset], "/proc/self/fd/%d", fds[0]);
+
+        fd_clear_cloexec(subst->fd);
+    }
 
     if (is_internal(cmd)) exec_internal(command, job);
     else  exec_external(command, job);
+
+    for (int i=0; i<vector_length(&command->substitutions); ++i){
+        substitution_t *subst = vector_at(&command->substitutions, i);
+        close(subst->fd);
+    }
 
     if (command->stdin.fd  != STDIN_FILENO)  close(command->stdin.fd);
     if (command->stdout.fd != STDOUT_FILENO) close(command->stdout.fd);
@@ -199,9 +203,7 @@ void exec_pipeline(pipeline_t *pipeline)
 
         command_t *command = vector_at(&pipeline->commands, i);
 
-
-        if (pipe_fds[0] != -1)
-            command->stdin.fd = pipe_fds[0];
+        if (pipe_fds[0] != -1) command->stdin.fd = pipe_fds[0];
 
         if (i + 1 < vector_length(&pipeline->commands))
         {
