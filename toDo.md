@@ -12,7 +12,7 @@
 ## Redirections
 
 - [x] `<`,`>`,`>>`,`>|`,`2>`,`2>>`,`2>|` (**exec.c:111-150** ; **jsh.h:21**)
-- [ ] `|`
+- [x] `|`
 - [ ] `<()`
 
 ## Erreurs du parseur à gérer
@@ -20,7 +20,7 @@
 - [x] `&` qui n'est pas à la fin (**input.c:64**)
 - [x] `cmd > ` - redirection vers rien (**input.c:87**)
 - [x] `cmd > | ...` - redirection vers pipe
-- [ ] `cmd | | ...` - double pipe
+- [x] `cmd | | ...` - double pipe
 
 ## Formatage du prompt
 
