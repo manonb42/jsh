@@ -106,8 +106,25 @@ int exec_show_last_return_code()
     return 0;
 }
 
-int exec_jobs()
+int exec_jobs(command_t *command)
 {
+    if(command->argc > 2) {
+        fprintf(stderr, "jsh: bg: bad argument\n");
+        return 1;
+    }
+    int job_to_display = 0; //if we display all jobs
+    if(command->argc == 2 && !strcmp((command->argv)[1], "-t")) {
+    //jobs -t
+    }
+    if(command->argc == 2 && ((command->argv)[1][0] == '%')) {
+    //jobs %job - assuming number of jobs < 10
+        job_t *job = job_by_id(atoi((command->argv)[1] + 1));
+        if(job == NULL){
+            fprintf(stderr, "jsh: bg: bad argument\n");
+            return 1;
+        }
+        job_to_display = job->jid;
+    }
     job_update_background_states();
 
     for (int i = 0; i < vector_length(&jsh.jobs); ++i)
@@ -115,14 +132,15 @@ int exec_jobs()
         job_t *proc = vector_at(&jsh.jobs, i);
         if (!proc)
             continue;
-
-        job_notify_state(proc);
+        if (!job_to_display || (job_to_display == proc->jid))
+            job_notify_state(proc);
     }
     return 0;
 }
 
 int exec_bg(command_t *command)
 {
+    //assuming number of jobs < 10
     if(command->argc != 2 || (command->argv)[1][0] != '%'){
         fprintf(stderr, "jsh: bg: bad argument\n");
         return 1;
@@ -138,6 +156,7 @@ int exec_bg(command_t *command)
 
 int exec_fg(command_t *command)
 {
+    //assuming number of jobs < 10
     if(command->argc != 2 || (command->argv)[1][0] != '%'){
         fprintf(stderr, "jsh: fg: bad argument\n");
         return 1;
