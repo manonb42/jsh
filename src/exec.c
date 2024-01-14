@@ -43,6 +43,17 @@ void put_process_in_foreground(pid_t pid_grp)
     sigprocmask(SIG_SETMASK, &s_courant, NULL);
 }
 
+void job_foreground(job_t *job){
+    put_process_in_foreground(job->pgid);
+    int status;
+    waitpid(-job->pgid, &status, WUNTRACED | WCONTINUED);
+    job_update_state(job, status);
+    if (job->current_state >= P_DONE)
+        job->notified_state = job->current_state;
+    if (job->current_state == P_DONE)
+        jsh.last_exit_code = WEXITSTATUS(status);
+    put_process_in_foreground(getpgrp());
+}
 
 void exec_external_init_child(command_t *command){
     default_signals();
@@ -53,15 +64,13 @@ void exec_external_init_child(command_t *command){
 
     // Process group created for pid
     setpgid(0, 0);
-    // Put this process group in foreground
-    if (!command->bg)
-        put_process_in_foreground(getpgrp());
 
     execvp(command->argv[0], command->argv);
     perror("jsh");
     exit(127);
 }
-int exec_external(command_t *command)
+
+void exec_external(command_t *command)
 {
     int pid = fork();
 
@@ -79,22 +88,7 @@ int exec_external(command_t *command)
     *job = (job_t){.pgid = pid, .current_state = P_RUNNING, .notified_state = P_NONE, .line = strdup(command->line)};
     job_track(job);
 
-    // If cmd is in background
-    if (!command->bg)
-    {
-        // Blocking until the command is completed
-        int status;
-        waitpid(-pid, &status, WUNTRACED | WCONTINUED);
-        // Put the process group of the shell in foreground
-        put_process_in_foreground(getpgrp());
-        // Update status of all processes in the job
-        job_update_state(job, status);
-        if (job->current_state >= P_DONE)
-            job->notified_state = job->current_state;
-        if (job->current_state == P_DONE)
-            return WEXITSTATUS(status);
-    }
-    return 0;
+    if (!command->bg) job_foreground(job);
 }
 
 void exec_command(command_t *command){
@@ -112,9 +106,7 @@ void exec_command(command_t *command){
     {
         command->bg = false;
         jsh.last_exit_code = exec_internal(command);
-    } else {
-        jsh.last_exit_code = exec_external(command);
-    }
+    } else  exec_external(command);
 
 
     if (command->stdin.fd  != STDIN_FILENO)  close(command->stdin.fd);
