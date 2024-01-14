@@ -66,10 +66,13 @@ int nb_chiffres(int nb)
     return i;
 }
 
+pipeline_t *parse_pipeline(int partc, char **parts);
+
 command_t *parse_command(int partc, char **parts)
 {
     command_t *out = calloc(1, sizeof(command_t));
     vector argv = vector_empty();
+    substitution_v substs = vector_empty();
 
     char *symbols[] = {"<", ">", ">|", ">>", "2>", "2>|", "2>>"};
     command_redir_type_t flags[] = {R_INPUT, R_NO_CLOBBER, R_CLOBBER, R_APPEND, R_NO_CLOBBER, R_CLOBBER, R_APPEND};
@@ -80,6 +83,25 @@ command_t *parse_command(int partc, char **parts)
         char *arg = parts[i];
         char *next_arg = parts[i + 1];
 
+        // Managing substitutions
+        if (strcmp(arg, "<(") == 0){
+            int open = i;
+            int close;
+            for (close = open+1; close<partc && strcmp(parts[close], ")")!=0; close++);
+            if (close == partc){
+                fprintf(stderr, "jsh: Syntax error : unclosed '<('\n");
+                jsh.last_exit_code = 1;
+                return NULL;
+            }
+            pipeline_t *pipeline = parse_pipeline(close-open-1, &parts[open+1]);
+            if (pipeline == NULL) return NULL;
+            substitution_t *subst = calloc(1, sizeof(substitution_t));
+            vector_append(&argv, "SUBST");
+            *subst = (substitution_t){ .pipeline = pipeline, .offset = vector_length(&argv)-1};
+            vector_append(&substs, subst);
+            i = close;
+            continue;
+        }
         // Managing redirections
         bool redir = false;
         for (int j = 0; j < sizeof(symbols) / sizeof(char *); ++j)
@@ -103,8 +125,7 @@ command_t *parse_command(int partc, char **parts)
             }
         }
 
-        if (redir)
-            continue;
+        if (redir) continue;
 
         vector_append(&argv, strdup(parts[i]));
     }
@@ -113,11 +134,13 @@ command_t *parse_command(int partc, char **parts)
     vector_shrink(&argv);
     out->argc = vector_length(&argv) - 1;
     out->argv = (char **)argv.data;
+    out->substitutions = substs;
     out->line = join_strings(partc, parts, " ");
 
     return out;
 }
 
+<<<<<<< HEAD
 pipeline_t *parse_pipeline(char *line)
 {
 
@@ -125,6 +148,11 @@ pipeline_t *parse_pipeline(char *line)
     int partc;
     for (partc = 0; parts[partc] != NULL; ++partc)
         ;
+=======
+
+pipeline_t *parse_pipeline(int partc, char **parts){
+
+>>>>>>> e9ca6b8 (input: parse substitutions)
 
     if (partc == 0)
     {
@@ -214,6 +242,7 @@ pipeline_t *read_pipeline()
     char *prompt = get_prompt();
     char *read = readline(prompt);
     free(prompt);
+<<<<<<< HEAD
     if (read == NULL)
     {
         return parse_pipeline("exit");
@@ -223,6 +252,16 @@ pipeline_t *read_pipeline()
     {
         add_history(read);
     }
+=======
+    if (read == NULL) { read = strdup("exit"); }
+
+    char **parts = split_string(read, " ");
+    int partc;
+    for (partc = 0; parts[partc] != NULL; ++partc);
+    pipeline_t *out = parse_pipeline(partc, parts);
+
+    if (out != NULL) { add_history(read); }
+>>>>>>> e9ca6b8 (input: parse substitutions)
     free(read);
     return out;
 }
