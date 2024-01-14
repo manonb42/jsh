@@ -13,20 +13,6 @@ int job_next_id()
   return vector_length(&jsh.jobs) + 1;
 }
 
-int job_count()
-{
-  int out = 0;
-  for (int i = 0; i < vector_length(&jsh.jobs); ++i)
-    if (vector_at(&jsh.jobs, i))
-      out++;
-  return out;
-}
-void job_untrack(job_t *job)
-{
-  vector_set(&jsh.jobs, job->jid - 1, NULL);
-  job->jid = 0;
-}
-
 void job_track(job_t *job)
 {
   job->jid = job_next_id();
@@ -36,6 +22,30 @@ void job_track(job_t *job)
   else
     vector_append(&jsh.jobs, job);
 }
+
+void job_untrack(job_t *job)
+{
+  vector_set(&jsh.jobs, job->jid - 1, NULL);
+  job->jid = 0;
+}
+
+
+job_t *job_by_id(int jid)
+{
+  if (vector_length(&jsh.jobs) <= jid - 1)
+    return NULL;
+  return vector_at(&jsh.jobs, jid - 1);
+}
+
+int job_count()
+{
+  int out = 0;
+  for (int i = 0; i < vector_length(&jsh.jobs); ++i)
+    if (vector_at(&jsh.jobs, i))
+      out++;
+  return out;
+}
+
 
 void job_display_state(job_t *job, FILE *output)
 {
@@ -130,9 +140,3 @@ void job_update_background_states()
   }
 }
 
-job_t *job_by_id(int jid)
-{
-  if (vector_length(&jsh.jobs) <= jid - 1)
-    return NULL;
-  return vector_at(&jsh.jobs, jid - 1);
-}
