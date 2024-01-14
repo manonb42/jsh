@@ -2,7 +2,7 @@
 
 - [x] fichier `AUTHORS.md`
 - [x] Makefile avec `make` et `make clean`
-- [ ] fichier `ARCHITECTURE.md` expliquant la stratégie adoptée pour répondre au sujet (notamment l'architecture logicielle, les structures de données et les algorithmes implémentés)
+- [x] fichier `ARCHITECTURE.md` expliquant la stratégie adoptée pour répondre au sujet (notamment l'architecture logicielle, les structures de données et les algorithmes implémentés)
 
 ## Gestion des signaux
 
@@ -38,7 +38,7 @@
 - [x] interprétation des caractères spéciaux `&`,`<`,`>`,`|` (**input.c:**)
 - [x] exécution de la commande (**jsh.c:52**)
 - [x] check des jobs en cours avant chaque nouvel affichage du prompt (**jsh.c:48**)
-- [x] affichage des jobs ayant changé de status (créé, stoppé, terminé, détaché) <span style="color:red">sauf pour ceux au premier plan devenus (achevé, tué ou détaché)</span> (**jsh.c:49**)
+- [x] affichage des jobs ayant changé de status (créé, stoppé, terminé, détaché) sauf pour ceux au premier plan devenus (achevé, tué ou détaché) (**jsh.c:49**)
 - [x] Lorsque la fin de l'entrée standard est atteinte (Ctrl-D), exécute `exit` (**input.c:143**)
 
 ## Commandes internes
@@ -49,7 +49,7 @@
 - [x] `exit` lorsqu'il y a des jobs en cours ou suspendus (**internalcmd.c:81**)
 - [x] `exit val`, `exit` (**internalcmd.c:79**)
 - [x] `jobs` (**internalcmd.c:107**)
-- [ ] `jobs -t`
+- [x] `jobs -t`
 - [x] `jobs %job`
 - [x] `bg %job`, `fg %job` (**internalcmd.c:XXX**)
 - [x] `kill [-sig] %job`, `kill [-sig] pid` (**internalcmd.c:122**)
@@ -60,4 +60,4 @@
 
 ---
 
-- [ ] un job dont au moins un processus n'a pas terminé, mais dont tous les processus directement lancés par le shell ont terminé, est détaché (detached) et quitte la surveillance de jsh;
+- [x] un job dont au moins un processus n'a pas terminé, mais dont tous les processus directement lancés par le shell ont terminé, est détaché (detached) et quitte la surveillance de jsh;
