@@ -5,11 +5,16 @@
 #include <unistd.h>
 #include <signal.h>
 #include <wait.h>
+#include <errno.h>
 
 #include "jobs.h"
 #include "exec.h"
 
 char *internals[] = {"pwd", "cd", "exit", "?", "kill", "jobs", "bg", "fg"};
+
+void dperror(int fd, char *prefix){
+    dprintf(fd, "%s : %s\n", prefix, strerror(errno));
+}
 
 bool parse_number(char *s, int *out)
 {
@@ -22,23 +27,25 @@ bool parse_number(char *s, int *out)
     return 1;
 }
 
-int exec_pwd()
+int exec_pwd(command_t *command)
 {
     char curdir[1024];
     if (getcwd(curdir, sizeof(curdir)))
     {
-        printf("%s\n", curdir);
+        dprintf(command->stdout.fd, "%s\n", curdir);
         return 0;
     }
     else
     {
-        perror("jsh: pwd");
+        dperror(command->stderr.fd, "jsh: pwd");
         return 1;
     }
 }
 
-int exec_cd(char *path)
+int exec_cd(command_t *command)
 {
+    char *path = command->argv[1];
+
     char curdir[1024]; // pwd of current directory
     getcwd(curdir, sizeof(curdir));
     char newpath[1024]; // The path's directory where we want to go.
@@ -50,7 +57,7 @@ int exec_cd(char *path)
         // Case : Invalid use of "~" path
         if (*(path + 1) != '/' && *(path + 1) != '\0')
         {
-            fprintf(stderr, "jsh: cd: invalid path's syntax ('%s')\n", path);
+            dprintf(command->stderr.fd, "jsh: cd: invalid path's syntax ('%s')\n", path);
             return 1;
         }
         sprintf(newpath, "%s%s", getenv("HOME"), path + 1);
@@ -60,7 +67,7 @@ int exec_cd(char *path)
         // Case : No previous directory
         if (!getenv("OLDPWD"))
         {
-            fprintf(stderr, "jsh: cd: \"OLDPWD\" is not define (no previous directory)\n");
+            dprintf(command->stderr.fd, "jsh: cd: \"OLDPWD\" is not define (no previous directory)\n");
             return 1;
         }
         strcpy(newpath, getenv("OLDPWD"));
@@ -70,7 +77,7 @@ int exec_cd(char *path)
 
     if (chdir(newpath))
     {
-        perror("jsh: cd");
+        dperror(command->stderr.fd, "jsh: cd");
         return 1;
     }
     // Change previous directory
@@ -78,17 +85,18 @@ int exec_cd(char *path)
     return 0;
 }
 
-int exec_exit(int code, command_t *command)
+int exec_exit( command_t *command)
 {
+    int code = jsh.last_exit_code;
     if (job_count() > 0)
     {
-        fprintf(stderr, "jsh: exit: there are running or stopped jobs\n");
+        dprintf(command->stderr.fd, "jsh: exit: there are running or stopped jobs\n");
         return 1;
     }
 
     if (command->argc > 1 && !parse_number(command->argv[1], &code))
     {
-        fprintf(stderr, "jsh: exit: bad argument\n");
+        dprintf(command->stderr.fd, "jsh: exit: bad argument\n");
         return 1;
     }
 
@@ -96,11 +104,11 @@ int exec_exit(int code, command_t *command)
     return 0;
 }
 
-int exec_show_last_return_code()
+int exec_show_last_return_code(command_t *command)
 {
-    if (printf("%d\n", jsh.last_exit_code) < 0)
+    if (dprintf(command->stdout.fd, "%d\n", jsh.last_exit_code) < 0)
     {
-        perror("jsh: ?");
+        dperror(command->stderr.fd, "jsh: ?");
         return 1;
     }
     return 0;
@@ -109,7 +117,7 @@ int exec_show_last_return_code()
 int exec_jobs(command_t *command)
 {
     if(command->argc > 2) {
-        fprintf(stderr, "jsh: bg: bad argument\n");
+        dprintf(command->stderr.fd, "jsh: bg: bad argument\n");
         return 1;
     }
     int job_to_display = 0; //if we display all jobs
@@ -120,7 +128,7 @@ int exec_jobs(command_t *command)
     //jobs %job - assuming number of jobs < 10
         job_t *job = job_by_id(atoi((command->argv)[1] + 1));
         if(job == NULL){
-            fprintf(stderr, "jsh: bg: bad argument\n");
+            dprintf(command->stderr.fd, "jsh: bg: bad argument\n");
             return 1;
         }
         job_to_display = job->jid;
@@ -142,12 +150,12 @@ int exec_bg(command_t *command)
 {
     //assuming number of jobs < 10
     if(command->argc != 2 || (command->argv)[1][0] != '%'){
-        fprintf(stderr, "jsh: bg: bad argument\n");
+        dprintf(command->stderr.fd, "jsh: bg: bad argument\n");
         return 1;
     }
     job_t *job_to_bg = job_by_id(atoi((command->argv)[1] + 1));
     if(job_to_bg == NULL){
-        fprintf(stderr, "jsh: bg: bad argument\n");
+        dprintf(command->stderr.fd, "jsh: bg: bad argument\n");
         return 1;
     }
     kill(job_to_bg->pgid, SIGCONT);
@@ -158,13 +166,13 @@ int exec_fg(command_t *command)
 {
     //assuming number of jobs < 10
     if(command->argc != 2 || (command->argv)[1][0] != '%'){
-        fprintf(stderr, "jsh: fg: bad argument\n");
+        dprintf(command->stderr.fd, "jsh: fg: bad argument\n");
         return 1;
     }
 
     job_t *job_to_fg = job_by_id(atoi((command->argv)[1] + 1));
     if(job_to_fg == NULL) {
-        fprintf(stderr, "jsh: fg: bad argument\n");
+        dprintf(command->stderr.fd, "jsh: fg: bad argument\n");
         return 1;
     }
     job_to_fg->running_fg = 1;
@@ -187,7 +195,7 @@ int exec_fg(command_t *command)
 int exec_kill(command_t *command)
 {
     if (command->argc < 2 || command->argc > 3)
-        fprintf(stderr, "jsh: kill: bad argument\n");
+        dprintf(command->stderr.fd, "jsh: kill: bad argument\n");
 
     char *sig = command->argc == 3 ? command->argv[1] : "-15";
     char *target = command->argv[command->argc - 1];
@@ -198,14 +206,14 @@ int exec_kill(command_t *command)
 
     if (sig[0] != '-' || !parse_number(&sig[1], &signum))
     {
-        fprintf(stderr, "jsh: kill: bad argument\n");
+        dprintf(command->stderr.fd, "jsh: kill: bad argument\n");
         return 1;
     }
 
     int targetnum = 0;
     if (!parse_number(&target[job ? 1 : 0], &targetnum))
     {
-        fprintf(stderr, "jsh: kill: bad argument\n");
+        dprintf(command->stderr.fd, "jsh: kill: bad argument\n");
         return 1;
     }
 
@@ -214,7 +222,7 @@ int exec_kill(command_t *command)
         job_t *job = job_by_id(targetnum);
         if (!job)
         {
-            fprintf(stderr, "jsh: kill: bad job id\n");
+            dprintf(command->stderr.fd, "jsh: kill: bad job id\n");
             return 1;
         }
         pid = -job->pgid;
@@ -237,21 +245,13 @@ bool is_internal(char *name)
 int exec_internal(command_t *command)
 {
     char *cmd = command->argv[0];
-    if (!strcmp(cmd, "?"))
-        return exec_show_last_return_code();
-    else if (!strcmp(cmd, "pwd"))
-        return exec_pwd();
-    else if (!strcmp(cmd, "cd"))
-        return exec_cd(command->argv[1]);
-    else if (!strcmp(cmd, "exit"))
-        return exec_exit(jsh.last_exit_code, command);
-    else if (!strcmp(cmd, "jobs"))
-        return exec_jobs(command);
-    else if (!strcmp(cmd, "kill"))
-        return exec_kill(command);
-    else if (!strcmp(cmd, "bg"))
-        return exec_bg(command);
-    else if (!strcmp(cmd, "fg"))
-        return exec_fg(command);
+    if (!strcmp(cmd, "?")) return exec_show_last_return_code(command);
+    else if (!strcmp(cmd, "pwd")) return exec_pwd(command);
+    else if (!strcmp(cmd, "cd")) return exec_cd(command);
+    else if (!strcmp(cmd, "exit")) return exec_exit(command);
+    else if (!strcmp(cmd, "jobs")) return exec_jobs(command);
+    else if (!strcmp(cmd, "kill")) return exec_kill(command);
+    else if (!strcmp(cmd, "bg")) return exec_bg(command);
+    else if (!strcmp(cmd, "fg")) return exec_fg(command);
     return -1;
 }

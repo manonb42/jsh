@@ -100,6 +100,16 @@ void exec_command(command_t *command)
     if (setup_redir_fd(&command->stderr, STDERR_FILENO) != 0){
         jsh.last_exit_code = 1; return; }
 
+    char *cmd = command->argv[0];
+
+    if (is_internal(cmd))
+    {
+        command->bg = false;
+        jsh.last_exit_code = exec_internal(command);
+        return;
+    }
+
+
     int original_stdin = dup(STDIN_FILENO);
     int original_stdout = dup(STDOUT_FILENO);
     int original_stderr = dup(STDERR_FILENO);
@@ -117,32 +127,21 @@ void exec_command(command_t *command)
         close(command->stderr.fd);
     }
 
-    char *cmd = command->argv[0];
+    // Initializing signals handler
+    struct sigaction ignore = {0}, def = {0};
+    ignore.sa_handler = SIG_IGN;
+    def.sa_handler = SIG_DFL;
+    int sig_to_ignore[] = {SIGINT, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU};
 
-    // Running command
-    if (is_internal(cmd))
-    {
-        command->bg = false;
-        jsh.last_exit_code = exec_internal(command);
-    }
-    else
-    {
-        // Initializing signals handler
-        struct sigaction ignore = {0}, def = {0};
-        ignore.sa_handler = SIG_IGN;
-        def.sa_handler = SIG_DFL;
-        int sig_to_ignore[] = {SIGINT, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU};
+    //  Default action
+    for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
+        sigaction(sig_to_ignore[i], &def, NULL);
 
-        //  Default action
-        for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
-            sigaction(sig_to_ignore[i], &def, NULL);
+    jsh.last_exit_code = exec_external(command);
 
-        jsh.last_exit_code = exec_external(command);
-
-        // Ignore signals
-        for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
-            sigaction(sig_to_ignore[i], &ignore, NULL);
-    }
+    // Ignore signals
+    for (int i = 0; i < sizeof(sig_to_ignore) / sizeof(int); ++i)
+        sigaction(sig_to_ignore[i], &ignore, NULL);
 
     // Default input/output
     dup2(original_stdin, STDIN_FILENO);
