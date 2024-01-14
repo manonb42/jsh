@@ -64,12 +64,22 @@ void free_command(command_t *command)
 {
     for (int i = 0; command->argv[i]; ++i)
         free(command->argv[i]);
+
+    for (int i=0; i<vector_length(&command->substitutions); ++i)
+        free_substitution(vector_at(&command->substitutions, i));
+    vector_free(command->substitutions);
     free(command->stdin.path);
     free(command->stdout.path);
     free(command->stderr.path);
     free(command->argv);
     free(command->line);
     free(command);
+}
+
+void free_substitution(substitution_t *substitution){
+    free_pipeline(substitution->pipeline);
+    free(substitution->file);
+    free(substitution);
 }
 
 void free_pipeline(pipeline_t *pipeline)

@@ -22,6 +22,9 @@ typedef struct command_redir_t
   int fd;
 } command_redir_t;
 
+struct substitution_t;
+typedef vector substitution_v;
+
 typedef struct command_t
 {
   bool bg;
@@ -32,12 +35,14 @@ typedef struct command_t
 
   char **argv;
   int argc;
+  substitution_v substitutions;
 
   char *line;
 } command_t;
 
 void free_command(command_t *command);
 typedef struct vector command_v;
+
 
 typedef struct pipeline_t
 {
@@ -47,6 +52,15 @@ typedef struct pipeline_t
 } pipeline_t;
 
 void free_pipeline(pipeline_t *pipeline);
+
+typedef struct substitution_t {
+  pipeline_t *pipeline;
+  int offset;
+  char *file;
+  int fd;
+} substitution_t;
+
+void free_substitution(substitution_t *substitution);
 
 typedef enum process_state_t
 {
