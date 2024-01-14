@@ -58,4 +58,4 @@ Ensuite, on ajoute le job à jsh, et si la commande est à exécuter en avant-pl
 
 ### Suite
 
-Quand une commande a terminé son exécution, on libère la mémoire allouée au pointeurs utilisés, puis on recommence la boucle principale : on met à jour les jobs et on affiche ceux dont l'état a changé, puis on répète le processus de gestion de commande expliqué plus haut.
+Quand une commande a terminé son exécution, on libère la mémoire allouée aux pointeurs utilisés, puis on recommence la boucle principale : on met à jour les jobs et on affiche ceux dont l'état a changé, puis on répète le processus de gestion de commande expliqué plus haut.
