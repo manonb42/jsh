@@ -13,6 +13,15 @@
 #include "internalcmd.h"
 #include "jobs.h"
 
+void register_process(job_t *job, command_t *command, int pid, process_state_t state, int exit){
+    process_t *process = calloc(1, sizeof(process_t));
+    *process = (process_t){ .pid = pid,
+                            .state = state,
+                            .exit_code = exit,
+                            .line = strdup(command->line)};
+    vector_append(&job->processes, process);
+
+}
 int setup_redir_fd(command_redir_t *redir, int default_fd){
   int fd;
   switch (redir->type) {
@@ -44,6 +53,15 @@ void put_process_in_foreground(pid_t pid_grp)
 }
 
 void job_foreground(job_t *job){
+    //FIXME: this assumes there is exactly one process
+    process_t *process = vector_at(&job->processes, 0);
+    if (process->state == P_DONE){
+        job->current_state = P_DONE;
+        job->notified_state = job->current_state;
+        jsh.last_exit_code = process->exit_code;
+        return;
+    }
+
     put_process_in_foreground(job->pgid);
     int status;
     waitpid(-job->pgid, &status, WUNTRACED | WCONTINUED);
@@ -84,27 +102,23 @@ void exec_external(command_t *command, job_t *job)
     if (job->pgid == 0) job->pgid = pid;
     setpgid(pid, job->pgid);
 
-    //FIXME:
-    job_track(job);
-    if (!command->bg) job_foreground(job);
+    register_process(job, command, pid, P_RUNNING, 0);
+
 }
 
 void exec_command(command_t *command, job_t *job){
 
     if (setup_redir_fd(&command->stdin, STDIN_FILENO) != 0){
-        jsh.last_exit_code = 1; free_job(job); return; }
+        register_process(job, command, 0, P_DONE, 1); return; }
     if (setup_redir_fd(&command->stdout, STDOUT_FILENO) != 0){
-        jsh.last_exit_code = 1; free_job(job); return; }
+        register_process(job, command, 0, P_DONE, 1); return; }
     if (setup_redir_fd(&command->stderr, STDERR_FILENO) != 0){
-        jsh.last_exit_code = 1; free_job(job); return; }
+        register_process(job, command, 0, P_DONE, 1); return; }
 
     char *cmd = command->argv[0];
 
-    if (is_internal(cmd))
-    {
-        jsh.last_exit_code = exec_internal(command);
-        free_job(job);
-    } else  exec_external(command, job);
+    if (is_internal(cmd)) exec_internal(command, job);
+    else  exec_external(command, job);
 
 
     if (command->stdin.fd  != STDIN_FILENO)  close(command->stdin.fd);
@@ -122,5 +136,8 @@ void exec_pipeline(pipeline_t *pipeline){
 
     command_t *command = vector_at(&pipeline->commands, 0);
     exec_command(command, job);
+
+    job_track(job);
+    if (!pipeline->background) job_foreground(job);
 
 }

@@ -242,16 +242,17 @@ bool is_internal(char *name)
     return false;
 }
 
-int exec_internal(command_t *command)
-{
+void exec_internal(command_t *command, job_t *job){
     char *cmd = command->argv[0];
-    if (!strcmp(cmd, "?")) return exec_show_last_return_code(command);
-    else if (!strcmp(cmd, "pwd")) return exec_pwd(command);
-    else if (!strcmp(cmd, "cd")) return exec_cd(command);
-    else if (!strcmp(cmd, "exit")) return exec_exit(command);
-    else if (!strcmp(cmd, "jobs")) return exec_jobs(command);
-    else if (!strcmp(cmd, "kill")) return exec_kill(command);
-    else if (!strcmp(cmd, "bg")) return exec_bg(command);
-    else if (!strcmp(cmd, "fg")) return exec_fg(command);
-    return -1;
+    int code;
+    if (!strcmp(cmd, "?")) code = exec_show_last_return_code(command);
+    else if (!strcmp(cmd, "pwd")) code = exec_pwd(command);
+    else if (!strcmp(cmd, "cd")) code = exec_cd(command);
+    else if (!strcmp(cmd, "exit")) code = exec_exit(command);
+    else if (!strcmp(cmd, "jobs")) code = exec_jobs(command);
+    else if (!strcmp(cmd, "kill")) code = exec_kill(command);
+    else if (!strcmp(cmd, "bg")) code = exec_bg(command);
+    else if (!strcmp(cmd, "fg")) code = exec_fg(command);
+    else code = -1;
+    register_process(job, command, 0, P_DONE, code);
 }
