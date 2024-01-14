@@ -58,6 +58,8 @@ typedef enum process_state_t
   P_DETACHED
 } process_state_t;
 
+char *get_state(process_state_t p_stat);
+
 typedef struct process_t
 {
   int pid;

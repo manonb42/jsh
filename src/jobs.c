@@ -47,28 +47,7 @@ int job_count()
 
 void job_display_state(job_t *job, FILE *output)
 {
-  char *state;
-  switch (job->current_state)
-  {
-  case P_NONE:
-    state = "???";
-    break;
-  case P_RUNNING:
-    state = "Running";
-    break;
-  case P_STOPPED:
-    state = "Stopped";
-    break;
-  case P_DONE:
-    state = "Done";
-    break;
-  case P_KILLED:
-    state = "Killed";
-    break;
-  case P_DETACHED:
-    state = "Detached";
-    break;
-  }
+  char *state = get_state(job->current_state);
   if (!job->running_fg || ((job->current_state != P_RUNNING) && (job->current_state != P_DONE)))
   {
     fprintf(output, "[%d] %d\t%s\t%s\n", job->jid, job->pgid, state, job->line);

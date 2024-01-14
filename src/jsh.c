@@ -32,6 +32,34 @@ void default_signals()
     for (int i = 0; i < sizeof(sig_to_default) / sizeof(int); ++i)
         sigaction(sig_to_default[i], &deflt, NULL);
 }
+
+char *get_state(process_state_t p_state)
+{
+    char *state;
+    switch (p_state)
+    {
+    case P_NONE:
+        state = "???";
+        break;
+    case P_RUNNING:
+        state = "Running";
+        break;
+    case P_STOPPED:
+        state = "Stopped";
+        break;
+    case P_DONE:
+        state = "Done";
+        break;
+    case P_KILLED:
+        state = "Killed";
+        break;
+    case P_DETACHED:
+        state = "Detached";
+        break;
+    }
+    return state;
+}
+
 void free_command(command_t *command)
 {
     for (int i = 0; command->argv[i]; ++i)

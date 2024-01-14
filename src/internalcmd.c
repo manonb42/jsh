@@ -117,37 +117,85 @@ int exec_show_last_return_code(command_t *command)
 
 int exec_jobs(command_t *command)
 {
-    if (command->argc > 2)
+    // Case: bad arguments
+    bool error = command->argc == 2 && strcmp((command->argv)[1], "-t") && (command->argv)[1][0] != '%';
+    if (command->argc > 2 || error)
     {
-        dprintf(command->stderr.fd, "jsh: bg: bad argument\n");
+        dprintf(command->stderr.fd, "jsh: jobs: bad argument\n");
         return 1;
     }
-    int job_to_display = 0; // if we display all jobs
-    if (command->argc == 2 && !strcmp((command->argv)[1], "-t"))
-    {
-        // jobs -t
-    }
-    if (command->argc == 2 && ((command->argv)[1][0] == '%'))
-    {
-        // jobs %job - assuming number of jobs < 10
-        job_t *job = job_by_id(atoi((command->argv)[1] + 1));
-        if (job == NULL)
-        {
-            dprintf(command->stderr.fd, "jsh: bg: bad argument\n");
-            return 1;
-        }
-        job_to_display = job->jid;
-    }
+
+    // File descriptor of stdout
+    int out = command->stdout.fd;
+
+    // Update states
     job_update_background_states();
 
-    for (int i = 0; i < vector_length(&jsh.jobs); ++i)
+    // Case: jobs
+    if (command->argc == 1)
     {
-        job_t *proc = vector_at(&jsh.jobs, i);
-        if (!proc)
-            continue;
-        if (!job_to_display || (job_to_display == proc->jid))
-            job_notify_state(proc);
+        // Display informations and notify state of each jobs
+        for (int i = 0; i < vector_length(&jsh.jobs); ++i)
+        {
+            job_t *job = vector_at(&jsh.jobs, i);
+            if (!job)
+                continue;
+            job_notify_state(job);
+        }
     }
+
+    char *arg = (command->argv)[1];
+
+    // Case: jobs %job
+    if (command->argc == 2 && (arg[0] == '%'))
+    {
+        // jobs %job - assuming number of jobs < 10
+        job_t *job = job_by_id(atoi(arg + 1));
+        if (!job)
+        {
+            dprintf(out, "jsh: jobs: job [%s] doesn't exist\n", arg + 1);
+            return 1;
+        }
+        // Display informations and notify state of job
+        job_notify_state(job);
+    }
+
+    // Case: jobs -t
+    if (command->argc == 2 && !strcmp(arg, "-t"))
+    {
+        for (int i = 0; i < vector_length(&jsh.jobs); ++i)
+        {
+            job_t *job = vector_at(&jsh.jobs, i);
+            if (!job)
+                continue;
+
+            // If it's not a pipeline
+            if (!strchr(job->line, '|'))
+                job_notify_state(job);
+
+            else
+            {
+                // Display information of [job]
+                fprintf(stdout, "[%d] %d\t%s\t%s\n", job->jid, job->pgid, get_state(job->current_state), job->line);
+
+                // Display informations for each processes of [job]
+                for (int j = 0; j < vector_length(&job->processes); ++j)
+                {
+                    process_t *process = vector_at(&job->processes, j);
+                    dprintf(out, "    %d\t%s\t%s\n", process->pid, get_state(process->state), process->line);
+                }
+
+                // Notify state of [job]
+                job->notified_state = job->current_state;
+                if (job->current_state >= P_DONE)
+                {
+                    job_untrack(job);
+                    free_job(job);
+                }
+            }
+        }
+    }
+
     return 0;
 }
 
