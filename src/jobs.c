@@ -84,8 +84,7 @@ void job_notify_state(job_t *job)
   if (job->current_state >= P_DONE)
   {
     job_untrack(job);
-    free(job->line);
-    free(job);
+    free_job(job);
   }
 }
 
@@ -105,8 +104,7 @@ void job_notify_state_changes()
     if (job->current_state >= P_DONE)
     {
       job_untrack(job);
-      free(job->line);
-      free(job);
+      free_job(job);
     }
   }
 }

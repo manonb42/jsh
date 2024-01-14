@@ -7,6 +7,6 @@
 #include <unistd.h>
 
 void put_process_in_foreground(pid_t pid_grp);
-void exec_command(command_t *);
+void exec_pipeline(pipeline_t *);
 
 #endif // EXEC_H_

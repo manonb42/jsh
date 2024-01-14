@@ -55,22 +55,21 @@ void job_foreground(job_t *job){
     put_process_in_foreground(getpgrp());
 }
 
-void exec_external_init_child(command_t *command){
+void exec_external_init_child(command_t *command, job_t *job){
     default_signals();
 
     dup2(command->stdin.fd, STDIN_FILENO);
     dup2(command->stdout.fd, STDOUT_FILENO);
     dup2(command->stderr.fd, STDERR_FILENO);
 
-    // Process group created for pid
-    setpgid(0, 0);
+    setpgid(0, job->pgid);
 
     execvp(command->argv[0], command->argv);
     perror("jsh");
     exit(127);
 }
 
-void exec_external(command_t *command)
+void exec_external(command_t *command, job_t *job)
 {
     int pid = fork();
 
@@ -80,36 +79,48 @@ void exec_external(command_t *command)
         exit(2);
     }
 
-    if (!pid){ exec_external_init_child(command);}
+    if (!pid){ exec_external_init_child(command, job);}
 
-    // Shell process group
-    setpgid(pid, 0);
-    job_t *job = calloc(sizeof(job_t), 1);
-    *job = (job_t){.pgid = pid, .current_state = P_RUNNING, .notified_state = P_NONE, .line = strdup(command->line)};
+    if (job->pgid == 0) job->pgid = pid;
+    setpgid(pid, job->pgid);
+
+    //FIXME:
     job_track(job);
-
     if (!command->bg) job_foreground(job);
 }
 
-void exec_command(command_t *command){
+void exec_command(command_t *command, job_t *job){
 
     if (setup_redir_fd(&command->stdin, STDIN_FILENO) != 0){
-        jsh.last_exit_code = 1; return; }
+        jsh.last_exit_code = 1; free_job(job); return; }
     if (setup_redir_fd(&command->stdout, STDOUT_FILENO) != 0){
-        jsh.last_exit_code = 1; return; }
+        jsh.last_exit_code = 1; free_job(job); return; }
     if (setup_redir_fd(&command->stderr, STDERR_FILENO) != 0){
-        jsh.last_exit_code = 1; return; }
+        jsh.last_exit_code = 1; free_job(job); return; }
 
     char *cmd = command->argv[0];
 
     if (is_internal(cmd))
     {
-        command->bg = false;
         jsh.last_exit_code = exec_internal(command);
-    } else  exec_external(command);
+        free_job(job);
+    } else  exec_external(command, job);
 
 
     if (command->stdin.fd  != STDIN_FILENO)  close(command->stdin.fd);
     if (command->stdout.fd != STDOUT_FILENO) close(command->stdout.fd);
     if (command->stderr.fd != STDERR_FILENO) close(command->stderr.fd);
+}
+
+void exec_pipeline(pipeline_t *pipeline){
+    job_t *job = calloc(1, sizeof(job_t));
+    *job = (job_t){
+        .pgid = 0,
+        .current_state = P_RUNNING,
+        .notified_state = P_NONE,
+        .line = strdup(pipeline->line)};
+
+    command_t *command = vector_at(&pipeline->commands, 0);
+    exec_command(command, job);
+
 }

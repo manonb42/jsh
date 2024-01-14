@@ -84,7 +84,7 @@ int main()
             job_notify_state_changes();
             pipeline = read_pipeline();
         } while (pipeline == NULL);
-        exec_command(vector_at(&pipeline->commands, 0));
+        exec_pipeline(pipeline);
         free_pipeline(pipeline);
     }
 
